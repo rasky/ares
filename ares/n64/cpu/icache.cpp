@@ -43,6 +43,7 @@ auto CPU::InstructionCache::step(u32 address) -> void {
     cpu.step(48);
     line.valid = 1;
     line.tag   = address & ~0xfff;
+    self.debugger.icacheMiss(address, self.scc.count >> 1);
   } else {
     cpu.step(2);
   }
@@ -53,6 +54,7 @@ auto CPU::InstructionCache::fetch(u32 address) -> u32 {
   auto& line = this->line(address);
   if(!line.hit(address)) {
     line.fill(address);
+    self.debugger.icacheMiss(address, self.scc.count >> 1);
   } else {
     cpu.step(2);
   }

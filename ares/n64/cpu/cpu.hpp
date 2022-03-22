@@ -18,12 +18,16 @@ struct CPU : Thread {
     auto tlbStore(u64 address, u64 physical) -> void;
     auto tlbStoreInvalid(u64 address) -> void;
     auto tlbStoreMiss(u64 address) -> void;
+    auto dcacheMiss(u32 address, u32 timestamp) -> void;
+    auto icacheMiss(u32 address, u32 timestamp) -> void;
 
     struct Tracer {
       Node::Debugger::Tracer::Instruction instruction;
       Node::Debugger::Tracer::Notification exception;
       Node::Debugger::Tracer::Notification interrupt;
       Node::Debugger::Tracer::Notification tlb;
+      Node::Debugger::Tracer::Notification dcache;
+      Node::Debugger::Tracer::Notification icache;
     } tracer;
   } debugger;
 
@@ -100,6 +104,9 @@ struct CPU : Thread {
 
   //icache.cpp
   struct InstructionCache {
+    CPU& self;
+    InstructionCache(CPU &self) : self(self) {}
+
     struct Line;
     auto line(u32 address) -> Line&;
     auto step(u32 address) -> void;
@@ -119,10 +126,13 @@ struct CPU : Thread {
       u16  index;
       u32  words[8];
     } lines[512];
-  } icache;
+  } icache{*this};
 
   //dcache.cpp
   struct DataCache {
+    CPU& self;
+    DataCache(CPU &self) : self(self) {}
+
     struct Line;
     auto line(u32 address) -> Line&;
     template<u32 Size> auto read(u32 address) -> u64;
@@ -148,7 +158,7 @@ struct CPU : Thread {
         u32 words[4];
       };
     } lines[512];
-  } dcache;
+  } dcache{*this};
 
   //tlb.cpp: Translation Lookaside Buffer
   struct TLB {

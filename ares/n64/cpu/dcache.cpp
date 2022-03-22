@@ -95,6 +95,7 @@ auto CPU::DataCache::read(u32 address) -> u64 {
   if(!line.hit(address)) {
     if(line.valid && line.dirty) line.writeBack();
     line.fill(address);
+    self.debugger.dcacheMiss(address, self.scc.count >> 1);
   } else {
     cpu.step(1);
   }

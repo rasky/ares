@@ -5,6 +5,8 @@ auto CPU::Debugger::load(Node::Object parent) -> void {
   tracer.exception = parent->append<Node::Debugger::Tracer::Notification>("Exception", "CPU");
   tracer.interrupt = parent->append<Node::Debugger::Tracer::Notification>("Interrupt", "CPU");
   tracer.tlb = parent->append<Node::Debugger::Tracer::Notification>("TLB", "CPU");
+  tracer.dcache = parent->append<Node::Debugger::Tracer::Notification>("DCache", "CPU");
+  tracer.icache = parent->append<Node::Debugger::Tracer::Notification>("ICache", "CPU");
 }
 
 auto CPU::Debugger::unload() -> void {
@@ -12,6 +14,8 @@ auto CPU::Debugger::unload() -> void {
   tracer.exception.reset();
   tracer.interrupt.reset();
   tracer.tlb.reset();
+  tracer.dcache.reset();
+  tracer.icache.reset();
 }
 
 auto CPU::Debugger::instruction() -> void {
@@ -119,5 +123,17 @@ auto CPU::Debugger::tlbStoreInvalid(u64 address) -> void {
 auto CPU::Debugger::tlbStoreMiss(u64 address) -> void {
   if(unlikely(tracer.tlb->enabled())) {
     tracer.tlb->notify({"store miss: 0x", hex(address)});
+  }
+}
+
+auto CPU::Debugger::dcacheMiss(u32 address, u32 timestamp) -> void {
+  if(unlikely(tracer.dcache->enabled())) {
+    tracer.dcache->notify({"dcache miss: 0x", hex(address), ", cop0 count: 0x", hex(timestamp)});
+  }
+}
+
+auto CPU::Debugger::icacheMiss(u32 address, u32 timestamp) -> void {
+  if(unlikely(tracer.icache->enabled())) {
+    tracer.icache->notify({"icache miss: 0x", hex(address), ", cop0 count: 0x", hex(timestamp)});
   }
 }
