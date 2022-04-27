@@ -1,36 +1,20 @@
 struct Cartridge {
   Node::Peripheral node;
   VFS::Pak pak;
-  Memory::Readable16 rom;
-  Memory::Writable16 ram;
-  Memory::Writable16 eeprom;
-  struct Flash : Memory::Writable {
-    template<u32 Size>
-    auto read(u32 address) -> u64 {
-      if constexpr(Size == Byte) return readByte(address);
-      if constexpr(Size == Half) return readHalf(address);
-      if constexpr(Size == Word) return readWord(address);
-      if constexpr(Size == Dual) return readDual(address);
-      unreachable;
-    }
-
-    template<u32 Size>
-    auto write(u32 address, u64 data) -> void {
-      if constexpr(Size == Byte) return writeByte(address, data);
-      if constexpr(Size == Half) return writeHalf(address, data);
-      if constexpr(Size == Word) return writeWord(address, data);
-      if constexpr(Size == Dual) return writeDual(address, data);
-    }
-
+  Memory::PIDeviceReadable rom;
+  Memory::PIDeviceWritable ram;
+  Memory::Writable eeprom;
+  struct Flash : Memory::PIDeviceWritable {
     //flash.cpp
-    auto readByte(u32 adddres) -> u64;
-    auto readHalf(u32 address) -> u64;
-    auto readWord(u32 address) -> u64;
-    auto readDual(u32 address) -> u64;
-    auto writeByte(u32 address, u64 data) -> void;
-    auto writeHalf(u32 address, u64 data) -> void;
-    auto writeWord(u32 address, u64 data) -> void;
-    auto writeDual(u32 address, u64 data) -> void;
+    auto readHalf(u32 address) -> u16;
+    auto writeHalf(u32 address, u16 data) -> void;
+
+    auto writeCommand(u16 data) -> void;
+    auto writeOffset(u16 data) -> void;
+    auto readData(u16 address) -> u16;
+    auto writeData(u16 address, u16 data) -> void;
+    auto readStatus(u16 address) -> u16;
+    auto writeStatus(u16 address, u16 data) -> void;
 
     enum class Mode : u32 { Idle, Erase, Write, Read, Status };
     Mode mode = Mode::Idle;

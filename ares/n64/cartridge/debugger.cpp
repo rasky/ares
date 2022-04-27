@@ -2,20 +2,20 @@ auto Cartridge::Debugger::load(Node::Object parent) -> void {
   memory.rom = parent->append<Node::Debugger::Memory>("Cartridge ROM");
   memory.rom->setSize(cartridge.rom.size);
   memory.rom->setRead([&](u32 address) -> u8 {
-    return cartridge.rom.read<Byte>(address);
+    return cartridge.rom.PIDeviceReadable::Readable::read<Byte>(address);
   });
   memory.rom->setWrite([&](u32 address, u8 data) -> void {
-    return cartridge.rom.write<Byte>(address, data);
+    return cartridge.rom.PIDeviceReadable::Readable::write<Byte>(address, data);
   });
 
   if(cartridge.ram) {
     memory.ram = parent->append<Node::Debugger::Memory>("Cartridge SRAM");
     memory.ram->setSize(cartridge.ram.size);
     memory.ram->setRead([&](u32 address) -> u8 {
-      return cartridge.ram.read<Byte>(address);
+      return cartridge.ram.PIDeviceWritable::Writable::read<Byte>(address);
     });
     memory.ram->setWrite([&](u32 address, u8 data) -> void {
-      return cartridge.ram.write<Byte>(address, data);
+      return cartridge.ram.PIDeviceWritable::Writable::write<Byte>(address, data);
     });
   }
 
@@ -34,10 +34,10 @@ auto Cartridge::Debugger::load(Node::Object parent) -> void {
     memory.flash = parent->append<Node::Debugger::Memory>("Cartridge Flash");
     memory.flash->setSize(cartridge.flash.size);
     memory.flash->setRead([&](u32 address) -> u8 {
-      return cartridge.flash.read<Byte>(address);
+      return cartridge.flash.Flash::PIDeviceWritable::Writable::read<Byte>(address);
     });
     memory.flash->setWrite([&](u32 address, u8 data) -> void {
-      return cartridge.flash.write<Byte>(address, data);
+      return cartridge.flash.Flash::PIDeviceWritable::Writable::write<Byte>(address, data);
     });
   }
 }
