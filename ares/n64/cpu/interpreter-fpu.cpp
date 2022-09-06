@@ -200,7 +200,7 @@ auto CPU::fpeInvalidOperation() -> bool {
 }
 
 auto CPU::checkFPUExceptions() -> bool {
-  printf("fexx: %llx %llx\n", fexx.__fpcr, fexx.__fpsr);
+  // printf("fexx: %llx %llx\n", fexx.__fpcr, fexx.__fpsr);
   int exc = fetestexcept(FE_ALL_EXCEPT);
   // feclearexcept(FE_ALL_EXCEPT);
   fpeBegin();
