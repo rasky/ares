@@ -41,7 +41,9 @@ auto System::game() -> string {
 }
 
 auto System::run() -> void {
+  cpu.fpeBegin();
   while(!vi.refreshed) cpu.main();
+  cpu.fpeEnd();
   vi.refreshed = false;
   pif.run();
 }

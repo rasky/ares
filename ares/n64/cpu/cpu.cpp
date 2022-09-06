@@ -136,6 +136,10 @@ auto CPU::power(bool reset) -> void {
   cop2 = {};
   fesetround(FE_TONEAREST);
   context.setMode();
+  fpeRaised = false;
+#if defined(PLATFORM_MACOS) && defined(ARCHITECTURE_ARM64)
+  signal(SIGILL, fpeExceptionHandler);
+#endif
 
   if constexpr(Accuracy::CPU::Recompiler) {
     auto buffer = ares::Memory::FixedAllocator::get().tryAcquire(64_MiB);

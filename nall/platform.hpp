@@ -33,6 +33,9 @@ namespace Math {
 #include <errno.h>
 #include <limits.h>
 #include <math.h>
+#if defined(PLATFORM_LINUX)
+#define _GNU_SOURCE   /* for feenableexcept() */
+#endif
 #include <fenv.h>
 #include <stdarg.h>
 #include <stdio.h>
