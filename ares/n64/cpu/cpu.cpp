@@ -139,7 +139,7 @@ auto CPU::power(bool reset) -> void {
   fpeRaised = false;
 #if defined(PLATFORM_MACOS) && defined(ARCHITECTURE_ARM64)
   signal(SIGILL, fpeExceptionHandler);
-#elif defined(PLATFORM_MACOS) || defined(PLATFORM_LINUX)
+#else
   signal(SIGFPE, fpeExceptionHandler);
 #endif
 

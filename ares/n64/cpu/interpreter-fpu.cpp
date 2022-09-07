@@ -2,8 +2,15 @@ bool CPU::fpeRaised;
 
 // #include <setjmp.h>
 
+#if defined(PLATFORM_WINDOWS)
+#define sigjmp_buf       jmp_buf
+#define sigsetjmp(x, y)  setjmp(x)
+#define siglongjmp(x, y) longjmp(x, y)
+#endif
+
 sigjmp_buf fpejmp;
-fenv_t fexx;
+//fenv_t fexx;
+int exc;
 
 auto CPU::fpeBegin() -> void {
     int fpe = 0;
@@ -20,8 +27,14 @@ auto CPU::fpeEnd() -> void {
 }
 
 auto CPU::fpeExceptionHandler(int signo) -> void {
+  print("fpeExceptionHandler ", signo, "\n");
   if (fpeRaised) {
-    fegetenv(&fexx);
+    //fegetenv(&fexx);
+    exc = fetestexcept(FE_ALL_EXCEPT);
+#if defined(PLATFORM_WINDOWS)
+    //mingw unregisters the handler before calling it...
+    signal(SIGFPE, fpeExceptionHandler);
+#endif
     siglongjmp(fpejmp, 1);
   } else
     abort();
@@ -201,7 +214,6 @@ auto CPU::fpeInvalidOperation() -> bool {
 
 auto CPU::checkFPUExceptions() -> bool {
   // printf("fexx: %llx %llx\n", fexx.__fpcr, fexx.__fpsr);
-  int exc = fetestexcept(FE_ALL_EXCEPT);
   // feclearexcept(FE_ALL_EXCEPT);
   fpeBegin();
   bool raise = false;

@@ -1,6 +1,6 @@
 #pragma once
 
-#ifdef PLATFORM_MACOS
+#if defined(PLATFORM_MACOS)
 
 inline int feenableexcept(unsigned int excepts)
 {
@@ -45,6 +45,30 @@ inline int fedisableexcept(unsigned int excepts)
     #endif
 
     return fesetenv(&fenv) ? -1 : old_excepts;
+}
+
+#elif defined(PLATFORM_WINDOWS)
+
+inline auto control87_mask(int excepts) -> unsigned int {
+  unsigned int mask = 0;
+  if(excepts & FE_INEXACT)   mask |= _EM_INEXACT;
+  if(excepts & FE_UNDERFLOW) mask |= _EM_UNDERFLOW;
+  if(excepts & FE_OVERFLOW)  mask |= _EM_OVERFLOW;
+  if(excepts & FE_DIVBYZERO) mask |= _EM_ZERODIVIDE;
+  if(excepts & FE_INVALID)   mask |= _EM_INVALID;
+  return mask;
+}
+
+inline auto feenableexcept(int excepts) -> int {
+  unsigned int mask = control87_mask(excepts);
+  _control87(0, mask);
+  return 0;
+}
+
+inline auto fedisableexcept(int excepts) -> int {
+  unsigned int mask = control87_mask(excepts);
+  _control87(mask, mask);
+  return 0;
 }
 
 #endif

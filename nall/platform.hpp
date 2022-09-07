@@ -15,6 +15,7 @@ namespace Math {
   #include <winsock2.h>
   #include <ws2tcpip.h>
   #include <windows.h>
+  #include <float.h>
   #include <direct.h>
   #include <io.h>
   #include <wchar.h>
@@ -37,6 +38,7 @@ namespace Math {
 #define _GNU_SOURCE   /* for feenableexcept() */
 #endif
 #include <fenv.h>
+#include <signal.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
