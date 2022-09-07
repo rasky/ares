@@ -226,7 +226,32 @@ auto CPU::checkFPUExceptions() -> bool {
   return raise;
 }
 
-#if 0
+#if defined(PLATFORM_WINDOWS) && defined(COMPILER_CLANG)
+auto CPU::fpeExceptionFilter(u32 code) -> int {
+  switch(code) {
+  case EXCEPTION_FLT_DIVIDE_BY_ZERO:    fpeDivisionByZero(); break;
+  case EXCEPTION_FLT_INEXACT_RESULT:    fpeInexact(); break;
+  case EXCEPTION_FLT_OVERFLOW:          fpeUnderflow(); break;
+  case EXCEPTION_FLT_UNDERFLOW:         fpeOverflow(); break;
+  case EXCEPTION_FLT_INVALID_OPERATION: fpeInvalidOperation(); break;
+  default: return EXCEPTION_CONTINUE_SEARCH;
+  }
+  exception.floatingPoint();
+  return EXCEPTION_EXECUTE_HANDLER;
+}
+
+#define CHECK_FPE(type, operation) ({ \
+  type res; \
+  __try { \
+    /* due to an LLVM limitation, it is not possible to catch an asynchronous */ \
+    /* exception generated in the same frame as the catching __try. */ \
+    res = [&] { return operation; }(); \
+  } __except(fpeExceptionFilter(exception_code())) { \
+    return; \
+  } \
+  (res); \
+})
+#elif 0
 #define CHECK_FPE(type, operation) ({ \
   feclearexcept(FE_ALL_EXCEPT); \
   volatile type res = operation; \

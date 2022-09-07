@@ -646,6 +646,7 @@ struct CPU : Thread {
   auto fpeOverflow() -> bool;
   auto fpeInvalidOperation() -> bool;
   auto checkFPUExceptions() -> bool;
+  auto fpeExceptionFilter(u32 code) -> int;
   auto fpeBegin() -> void;
   auto fpeEnd() -> void;
   static auto fpeExceptionHandler(int signo) -> void;

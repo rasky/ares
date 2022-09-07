@@ -160,6 +160,10 @@ ifeq ($(findstring clang++,$(compiler)),clang++)
     # work around bad interaction with alignas(n) when n >= 4096
     flags += -mno-global-merge
   endif
+  ifeq ($(platform),windows)
+    # enable __try/__except support
+    flags += -fms-extensions
+  endif
 # gcc settings
 else ifeq ($(findstring g++,$(compiler)),g++)
   flags += -fno-strict-aliasing -fwrapv -Wno-trigraphs
