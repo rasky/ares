@@ -9,10 +9,10 @@ bool CPU::fpeRaised;
 #endif
 
 sigjmp_buf fpejmp;
-//fenv_t fexx;
-int exc;
+int fpeexc;
 
 auto CPU::fpeBegin() -> void {
+    fpeEnd();
     int fpe = 0;
     if(fpu.csr.enable.inexact)          fpe |= FE_INEXACT;
     if(fpu.csr.enable.underflow)        fpe |= FE_UNDERFLOW;
@@ -26,14 +26,24 @@ auto CPU::fpeEnd() -> void {
     fedisableexcept(FE_ALL_EXCEPT);
 }
 
-auto CPU::fpeExceptionHandler(int signo) -> void {
-  print("fpeExceptionHandler ", signo, "\n");
+auto CPU::fpeExceptionHandler(int signo, siginfo_t *si, void *data) -> void {
+  print("fpeExceptionHandler ", sys_signame[signo], "\n");
   if (fpeRaised) {
-    //fegetenv(&fexx);
-    exc = fetestexcept(FE_ALL_EXCEPT);
+#if defined(PLATFORM_MACOS) && defined(ARCHITECTURE_ARM64)
+    // Unfortunately, there does not seem to be a way to know which FPU exception triggered
+    // on macOS ARM64. The information does not appear to be present in siginfo_t, nor it
+    // is available from the state returned by fegetenv() (FPCR, FPSR). If it's somewhere,
+    // it's well hidden.
+    fpeexc = 0;
+#else
+    fpeexc = si->si_code;
+#endif
 #if defined(PLATFORM_WINDOWS)
     //mingw unregisters the handler before calling it...
-    signal(SIGFPE, fpeExceptionHandler);
+    struct sigaction act = {0};
+    act.sa_sigaction = fpeExceptionHandler;
+    act.sa_flags = SA_NODEFER | SA_SIGINFO | SA_ONSTACK;
+    sigaction(SIGFPE, &act, NULL);
 #endif
     siglongjmp(fpejmp, 1);
   } else
@@ -164,15 +174,12 @@ auto CPU::setControlRegisterFPU(n5 index, n32 data) -> void {
       case 3: fesetround(FE_DOWNWARD);   break;
       }
     }
-  if(1){ //fpu.csr.enable != enablePrevious) {
-      int fpe = 0;
-      if(fpu.csr.enable.inexact)          fpe |= FE_INEXACT;
-      if(fpu.csr.enable.underflow)        fpe |= FE_UNDERFLOW;
-      if(fpu.csr.enable.overflow)         fpe |= FE_OVERFLOW;
-      if(fpu.csr.enable.divisionByZero)   fpe |= FE_DIVBYZERO;
-      if(fpu.csr.enable.invalidOperation) fpe |= FE_INVALID;
-      feenableexcept(fpe);
-  }
+    if(fpu.csr.enable.divisionByZero   != enablePrevious.divisionByZero ||
+       fpu.csr.enable.inexact          != enablePrevious.inexact ||
+       fpu.csr.enable.underflow        != enablePrevious.underflow ||
+       fpu.csr.enable.overflow         != enablePrevious.overflow ||
+       fpu.csr.enable.invalidOperation != enablePrevious.invalidOperation)
+     fpeBegin();
   } break;
   }
 }
@@ -212,18 +219,23 @@ auto CPU::fpeInvalidOperation() -> bool {
     return false;
 }
 
-auto CPU::checkFPUExceptions() -> bool {
-  // printf("fexx: %llx %llx\n", fexx.__fpcr, fexx.__fpsr);
-  // feclearexcept(FE_ALL_EXCEPT);
-  fpeBegin();
-  bool raise = false;
-  if(exc & FE_DIVBYZERO) raise |= fpeDivisionByZero();
-  if(exc & FE_INEXACT)   raise |= fpeInexact();
-  if(exc & FE_UNDERFLOW) raise |= fpeUnderflow();
-  if(exc & FE_OVERFLOW)  raise |= fpeOverflow();
-  if(exc & FE_INVALID)   raise |= fpeInvalidOperation();
-  if(raise) printf("FPE exception: %x\n", exc), exception.floatingPoint();
-  return raise;
+auto CPU::fpeRaiseException(int exc) -> bool {
+  if(!exc) {
+    // We don't know which exception was set. So just set them all.
+    if(fpu.csr.enable.inexact)          exc |= FE_INEXACT;
+    if(fpu.csr.enable.invalidOperation) exc |= FE_INVALID;
+    if(fpu.csr.enable.underflow)        exc |= FE_OVERFLOW;
+    if(fpu.csr.enable.overflow)         exc |= FE_UNDERFLOW;
+    if(fpu.csr.enable.divisionByZero)   exc |= FE_DIVBYZERO;
+  }
+
+  if(exc & FE_DIVBYZERO) fpeDivisionByZero();
+  if(exc & FE_INEXACT)   fpeInexact();
+  if(exc & FE_UNDERFLOW) fpeUnderflow();
+  if(exc & FE_OVERFLOW)  fpeOverflow();
+  if(exc & FE_INVALID)   fpeInvalidOperation();
+  exception.floatingPoint();
+  return true;
 }
 
 #if defined(PLATFORM_WINDOWS) && defined(COMPILER_CLANG)
@@ -251,20 +263,13 @@ auto CPU::fpeExceptionFilter(u32 code) -> int {
   } \
   (res); \
 })
-#elif 0
-#define CHECK_FPE(type, operation) ({ \
-  feclearexcept(FE_ALL_EXCEPT); \
-  volatile type res = operation; \
-  if (checkFPUExceptions()) return; \
-  (res); \
-})
 #else
 #define CHECK_FPE(type, operation) ({ \
   volatile type res; \
   fpeRaised = true; \
   if (sigsetjmp(fpejmp, 1)) { \
     fpeRaised = false; \
-    checkFPUExceptions(); \
+    fpeRaiseException(fpeexc); \
     return; \
   } else { \
     res = operation; \

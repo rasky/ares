@@ -137,10 +137,15 @@ auto CPU::power(bool reset) -> void {
   fesetround(FE_TONEAREST);
   context.setMode();
   fpeRaised = false;
+  struct sigaction act = {0};
+  act.sa_sigaction = fpeExceptionHandler;
+  act.sa_flags = SA_NODEFER | SA_SIGINFO | SA_ONSTACK;
 #if defined(PLATFORM_MACOS) && defined(ARCHITECTURE_ARM64)
-  signal(SIGILL, fpeExceptionHandler);
+  sigaction(SIGILL, &act, NULL);
+  // signal(SIGILL, fpeExceptionHandler);
 #else
-  signal(SIGFPE, fpeExceptionHandler);
+  sigaction(SIGFPE, &act, NULL);
+  // signal(SIGFPE, fpeExceptionHandler);
 #endif
 
   if constexpr(Accuracy::CPU::Recompiler) {

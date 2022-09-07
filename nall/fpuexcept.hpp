@@ -20,7 +20,6 @@ inline int feenableexcept(unsigned int excepts)
     fenv.__control &= ~new_excepts;
     fenv.__mxcsr   &= ~(new_excepts << 7);
     #endif
-    printf("enable: %llx %llx\n", fenv.__fpcr, fenv.__fpsr);
 
     return fesetenv(&fenv) ? -1 : old_excepts;
 }

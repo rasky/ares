@@ -645,11 +645,11 @@ struct CPU : Thread {
   auto fpeUnderflow() -> bool;
   auto fpeOverflow() -> bool;
   auto fpeInvalidOperation() -> bool;
-  auto checkFPUExceptions() -> bool;
+  auto fpeRaiseException(int exc) -> bool;
   auto fpeExceptionFilter(u32 code) -> int;
   auto fpeBegin() -> void;
   auto fpeEnd() -> void;
-  static auto fpeExceptionHandler(int signo) -> void;
+  static auto fpeExceptionHandler(int signo, siginfo_t *si, void *data) -> void;
   static bool fpeRaised;
 
   auto BC1(bool value, bool likely, s16 imm) -> void;
