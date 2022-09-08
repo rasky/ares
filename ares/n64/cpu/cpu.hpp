@@ -8,6 +8,8 @@
   #endif
 #elif defined(PLATFORM_LINUX) && defined(ARCHITECTURE_AMD64)
     #define FPE_HANDLER_SIGNAL
+#elif defined(PLATFORM_MACOS) && defined(ARCHITECTURE_ARM64)
+    #define FPE_HANDLER_SIGNAL
 #else
     #define FPE_HANDLER_SIGNAL_SJLJ
 #endif
