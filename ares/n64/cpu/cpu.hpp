@@ -1,5 +1,15 @@
 //NEC VR4300
 
+#if defined(PLATFORM_WINDOWS)
+  #if defined(COMPILER_GCC)
+    #define FPE_HANDLER_VECTORED
+  #else
+    #define FPE_HANDLER_SEH
+  #endif
+#else
+    #define FPE_HANDLER_SIGNAL
+#endif
+
 struct CPU : Thread {
   Node::Object node;
 
@@ -649,8 +659,13 @@ struct CPU : Thread {
   auto fpeExceptionFilter(u32 code) -> int;
   auto fpeBegin() -> void;
   auto fpeEnd() -> void;
+  #if defined(FPE_HANDLER_SIGNAL)
   static auto fpeExceptionHandler(int signo, siginfo_t *si, void *data) -> void;
-  static bool fpeRaised;
+  #endif
+  static volatile bool fpeRaised;
+  #if defined(FPE_HANDLER_VECTORED)
+  void* fpeHandler = nullptr;
+  #endif
 
   auto BC1(bool value, bool likely, s16 imm) -> void;
   auto CFC1(r64& rt, u8 rd) -> void;

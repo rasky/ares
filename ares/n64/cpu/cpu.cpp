@@ -21,11 +21,20 @@ CPU cpu;
 auto CPU::load(Node::Object parent) -> void {
   node = parent->append<Node::Object>("CPU");
   debugger.load(node);
+#if defined(FPE_HANDLER_VECTORED)
+  fpeHandler = AddVectoredExceptionHandler(1, fpeVectoredExceptionHandler);
+#endif
 }
 
 auto CPU::unload() -> void {
   debugger.unload();
   node.reset();
+#if defined(FPE_HANDLER_VECTORED)
+  if(fpeHandler) {
+    RemoveVectoredExceptionHandler(fpeHandler);
+    fpeHandler = nullptr;
+  }
+#endif
 }
 
 auto CPU::main() -> void {
@@ -137,6 +146,7 @@ auto CPU::power(bool reset) -> void {
   fesetround(FE_TONEAREST);
   context.setMode();
   fpeRaised = false;
+#if defined(FPE_HANDLER_SIGNAL)
   struct sigaction act = {0};
   act.sa_sigaction = fpeExceptionHandler;
   act.sa_flags = SA_NODEFER | SA_SIGINFO | SA_ONSTACK;
@@ -146,6 +156,7 @@ auto CPU::power(bool reset) -> void {
 #else
   sigaction(SIGFPE, &act, NULL);
   // signal(SIGFPE, fpeExceptionHandler);
+#endif
 #endif
 
   if constexpr(Accuracy::CPU::Recompiler) {

@@ -1,14 +1,10 @@
-bool CPU::fpeRaised;
+volatile bool CPU::fpeRaised;
 
 // #include <setjmp.h>
 
-#if defined(PLATFORM_WINDOWS)
-#define sigjmp_buf       jmp_buf
-#define sigsetjmp(x, y)  setjmp(x)
-#define siglongjmp(x, y) longjmp(x, y)
-#endif
-
+#if defined(FPE_HANDLER_SIGNAL)
 sigjmp_buf fpejmp;
+#endif
 int fpeexc;
 
 auto CPU::fpeBegin() -> void {
@@ -26,6 +22,7 @@ auto CPU::fpeEnd() -> void {
     fedisableexcept(FE_ALL_EXCEPT);
 }
 
+#if defined(FPE_HANDLER_SIGNAL)
 auto CPU::fpeExceptionHandler(int signo, siginfo_t *si, void *data) -> void {
   print("fpeExceptionHandler ", sys_signame[signo], "\n");
   if (fpeRaised) {
@@ -38,17 +35,11 @@ auto CPU::fpeExceptionHandler(int signo, siginfo_t *si, void *data) -> void {
 #else
     fpeexc = si->si_code;
 #endif
-#if defined(PLATFORM_WINDOWS)
-    //mingw unregisters the handler before calling it...
-    struct sigaction act = {0};
-    act.sa_sigaction = fpeExceptionHandler;
-    act.sa_flags = SA_NODEFER | SA_SIGINFO | SA_ONSTACK;
-    sigaction(SIGFPE, &act, NULL);
-#endif
     siglongjmp(fpejmp, 1);
   } else
     abort();
 }
+#endif
 
 auto CPU::FPU::setFloatingPointMode(bool mode) -> void {
   if(mode == 0) {
@@ -238,20 +229,21 @@ auto CPU::fpeRaiseException(int exc) -> bool {
   return true;
 }
 
-#if defined(PLATFORM_WINDOWS) && defined(COMPILER_CLANG)
+#if defined(FPE_HANDLER_VECTORED) || defined(FPE_HANDLER_SEH)
 auto CPU::fpeExceptionFilter(u32 code) -> int {
   switch(code) {
-  case EXCEPTION_FLT_DIVIDE_BY_ZERO:    fpeDivisionByZero(); break;
-  case EXCEPTION_FLT_INEXACT_RESULT:    fpeInexact(); break;
-  case EXCEPTION_FLT_OVERFLOW:          fpeUnderflow(); break;
-  case EXCEPTION_FLT_UNDERFLOW:         fpeOverflow(); break;
-  case EXCEPTION_FLT_INVALID_OPERATION: fpeInvalidOperation(); break;
+  case EXCEPTION_FLT_DIVIDE_BY_ZERO:    fpeexc = FE_DIVBYZERO; break;
+  case EXCEPTION_FLT_INEXACT_RESULT:    fpeexc = FE_INEXACT; break;
+  case EXCEPTION_FLT_OVERFLOW:          fpeexc = FE_OVERFLOW; break;
+  case EXCEPTION_FLT_UNDERFLOW:         fpeexc = FE_UNDERFLOW; break;
+  case EXCEPTION_FLT_INVALID_OPERATION: fpeexc = FE_INVALID; break;
   default: return EXCEPTION_CONTINUE_SEARCH;
   }
-  exception.floatingPoint();
   return EXCEPTION_EXECUTE_HANDLER;
 }
+#endif
 
+#if defined(FPE_HANDLER_SEH)
 #define CHECK_FPE(type, operation) ({ \
   type res; \
   __try { \
@@ -259,11 +251,46 @@ auto CPU::fpeExceptionFilter(u32 code) -> int {
     /* exception generated in the same frame as the catching __try. */ \
     res = [&] { return operation; }(); \
   } __except(fpeExceptionFilter(exception_code())) { \
+    fpeRaiseException(fpeexc); \
     return; \
   } \
   (res); \
 })
+#endif
+
+#if defined(FPE_HANDLER_VECTORED)
+auto NTAPI fpeVectoredExceptionHandler(EXCEPTION_POINTERS* info) -> LONG
+{
+	auto code = info->ExceptionRecord->ExceptionCode;
+  if(cpu.fpeExceptionFilter(code) == EXCEPTION_CONTINUE_SEARCH) {
+    return EXCEPTION_CONTINUE_SEARCH;
+  }
+  //disable exceptions
+#if defined(ARCHITECTURE_AMD64)
+  info->ContextRecord->MxCsr |= 0x1e80; //pm um om zm im
+#elif defined(ARCHITECTURE_ARM64)
+  info->ContextRecord->Fpcr &= ~0x1f00; //ixe ufe ofe dze ioe
 #else
+  #error Unimplemented architecture
+#endif
+  CPU::fpeRaised = true;
+  return EXCEPTION_CONTINUE_EXECUTION;
+}
+
+#define CHECK_FPE(type, operation) ({ \
+  fpeRaised = false; \
+  volatile type res = operation; \
+  if(fpeRaised) { \
+    fpeRaised = false; \
+    fpeRaiseException(fpeexc); \
+    fpeBegin(); \
+    return; \
+  } \
+  (res); \
+})
+#endif
+
+#if defined(FPE_HANDLER_SIGNAL)
 #define CHECK_FPE(type, operation) ({ \
   volatile type res; \
   fpeRaised = true; \
