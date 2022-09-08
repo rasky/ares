@@ -730,22 +730,42 @@ auto CPU::FSUB_D(u8 fd, u8 fs, u8 ft) -> void {
 
 auto CPU::FTRUNC_L_S(u8 fd, u8 fs) -> void {
   if(!scc.status.enable.coprocessor1) return exception.coprocessor1();
-  FD(s64) = FS(f32) < 0 ? ceil(FS(f32)) : floor(FS(f32));
+  auto f = FS(f32);
+  if (isinf(f) || isnan(f) || f > (1ll<<63-1) || f < -(1ll<<63)) {
+    if (!fpeInvalidOperation()) FD(s64) = 0xffff'ffff'ffff'ffff;
+  } else {
+    FD(s64) = f < 0 ? ceil(f) : floor(f);
+  }
 }
 
 auto CPU::FTRUNC_L_D(u8 fd, u8 fs) -> void {
   if(!scc.status.enable.coprocessor1) return exception.coprocessor1();
-  FD(s64) = FS(f64) < 0 ? ceil(FS(f64)) : floor(FS(f64));
+  auto f = FS(f64);
+  if (isinf(f) || isnan(f) || f > (1ll<<63-1) || f < -(1ll<<63)) {
+    if (!fpeInvalidOperation()) FD(s64) = 0xffff'ffff'ffff'ffff;
+  } else {
+    FD(s64) = f < 0 ? ceil(f) : floor(f);
+  }
 }
 
 auto CPU::FTRUNC_W_S(u8 fd, u8 fs) -> void {
   if(!scc.status.enable.coprocessor1) return exception.coprocessor1();
-  FD(s32) = FS(f32) < 0 ? ceil(FS(f32)) : floor(FS(f32));
+  auto f = FS(f32);
+  if (isinf(f) || isnan(f) || f > (1<<31-1) || f < -(1<<31)) {
+    if (!fpeInvalidOperation()) FD(s32) = 0xffff'ffff;
+  } else {
+    FD(s32) = f < 0 ? ceil(f) : floor(f);
+  }
 }
 
 auto CPU::FTRUNC_W_D(u8 fd, u8 fs) -> void {
   if(!scc.status.enable.coprocessor1) return exception.coprocessor1();
-  FD(s32) = FS(f64) < 0 ? ceil(FS(f64)) : floor(FS(f64));
+  auto f = FS(f64);
+  if (isinf(f) || isnan(f) || f > (1<<31-1) || f < -(1<<31)) {
+    if (!fpeInvalidOperation()) FD(s32) = 0xffff'ffff;
+  } else {
+    FD(s32) = f < 0 ? ceil(f) : floor(f);
+  }
 }
 
 auto CPU::LDC1(u8 ft, cr64& rs, s16 imm) -> void {
