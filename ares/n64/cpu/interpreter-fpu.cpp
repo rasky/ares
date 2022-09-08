@@ -33,7 +33,14 @@ auto CPU::fpeExceptionHandler(int signo, siginfo_t *si, void *data) -> void {
     // it's well hidden.
     fpeexc = 0;
 #else
-    fpeexc = si->si_code;
+    switch(si->si_code) {
+    case FPE_FLTDIV: fpeexc = FE_DIVBYZERO; break;
+    case FPE_FLTOVF: fpeexc = FE_OVERFLOW; break;
+    case FPE_FLTUND: fpeexc = FE_UNDERFLOW; break;
+    case FPE_FLTRES: fpeexc = FE_INEXACT; break;
+    case FPE_FLTINV: fpeexc = FE_INVALID; break;
+    default: fpeexc = 0; break;
+    }
 #endif
     siglongjmp(fpejmp, 1);
   } else
