@@ -146,7 +146,7 @@ auto CPU::power(bool reset) -> void {
   fesetround(FE_TONEAREST);
   context.setMode();
   fpeRaised = false;
-#if defined(FPE_HANDLER_SIGNAL)
+#if defined(FPE_HANDLER_SIGNAL) || defined(FPE_HANDLER_SIGNAL_SJLJ)
   struct sigaction act = {0};
   act.sa_sigaction = fpeExceptionHandler;
   act.sa_flags = SA_NODEFER | SA_SIGINFO | SA_ONSTACK;

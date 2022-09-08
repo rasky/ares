@@ -2,7 +2,7 @@ volatile bool CPU::fpeRaised;
 
 // #include <setjmp.h>
 
-#if defined(FPE_HANDLER_SIGNAL)
+#if defined(FPE_HANDLER_SIGNAL_SJLJ)
 sigjmp_buf fpejmp;
 #endif
 int fpeexc;
@@ -16,16 +16,19 @@ auto CPU::fpeBegin() -> void {
     if(fpu.csr.enable.divisionByZero)   fpe |= FE_DIVBYZERO;
     if(fpu.csr.enable.invalidOperation) fpe |= FE_INVALID;
     feenableexcept(fpe);
+#if !(defined(PLATFORM_MACOS) && defined(ARCHITECTURE_ARM64))
+    feclearexcept(FE_ALL_EXCEPT);
+#endif
 }
 
 auto CPU::fpeEnd() -> void {
     fedisableexcept(FE_ALL_EXCEPT);
 }
 
-#if defined(FPE_HANDLER_SIGNAL)
+#if defined(FPE_HANDLER_SIGNAL) || defined(FPE_HANDLER_SIGNAL_SJLJ)
 auto CPU::fpeExceptionHandler(int signo, siginfo_t *si, void *data) -> void {
-  print("fpeExceptionHandler ", sys_signame[signo], "\n");
-  if (fpeRaised) {
+  print("fpeExceptionHandler ", signo, "\n");
+  if(!fpeRaised) {
 #if defined(PLATFORM_MACOS) && defined(ARCHITECTURE_ARM64)
     // Unfortunately, there does not seem to be a way to know which FPU exception triggered
     // on macOS ARM64. The information does not appear to be present in siginfo_t, nor it
@@ -42,7 +45,18 @@ auto CPU::fpeExceptionHandler(int signo, siginfo_t *si, void *data) -> void {
     default: fpeexc = 0; break;
     }
 #endif
+#if defined(FPE_HANDLER_SIGNAL_SJLJ)
     siglongjmp(fpejmp, 1);
+#else
+  #if defined(ARCHITECTURE_AMD64)
+    auto uc = (ucontext_t*)data;
+    auto fpregs = uc->uc_mcontext.fpregs;
+    fpregs->mxcsr |= 0x1e80; //pm um om zm im
+  #else
+    #error #error Unimplemented architecture
+  #endif
+    fpeRaised = true;
+#endif
   } else
     abort();
 }
@@ -283,7 +297,9 @@ auto NTAPI fpeVectoredExceptionHandler(EXCEPTION_POINTERS* info) -> LONG
   CPU::fpeRaised = true;
   return EXCEPTION_CONTINUE_EXECUTION;
 }
+#endif
 
+#if defined(FPE_HANDLER_VECTORED) || defined(FPE_HANDLER_SIGNAL)
 #define CHECK_FPE(type, operation) ({ \
   fpeRaised = false; \
   volatile type res = operation; \
@@ -297,17 +313,16 @@ auto NTAPI fpeVectoredExceptionHandler(EXCEPTION_POINTERS* info) -> LONG
 })
 #endif
 
-#if defined(FPE_HANDLER_SIGNAL)
+#if defined(FPE_HANDLER_SIGNAL_SJLJ)
 #define CHECK_FPE(type, operation) ({ \
   volatile type res; \
-  fpeRaised = true; \
-  if (sigsetjmp(fpejmp, 1)) { \
+  fpeRaised = false; \
+  if(sigsetjmp(fpejmp, 1)) { \
     fpeRaised = false; \
     fpeRaiseException(fpeexc); \
     return; \
   } else { \
     res = operation; \
-    fpeRaised = false; \
   } \
   (res); \
 })

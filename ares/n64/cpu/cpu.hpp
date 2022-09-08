@@ -6,8 +6,10 @@
   #else
     #define FPE_HANDLER_SEH
   #endif
-#else
+#elif defined(PLATFORM_LINUX) && defined(ARCHITECTURE_AMD64)
     #define FPE_HANDLER_SIGNAL
+#else
+    #define FPE_HANDLER_SIGNAL_SJLJ
 #endif
 
 struct CPU : Thread {
@@ -659,7 +661,7 @@ struct CPU : Thread {
   auto fpeExceptionFilter(u32 code) -> int;
   auto fpeBegin() -> void;
   auto fpeEnd() -> void;
-  #if defined(FPE_HANDLER_SIGNAL)
+  #if defined(FPE_HANDLER_SIGNAL) || defined(FPE_HANDLER_SIGNAL_SJLJ)
   static auto fpeExceptionHandler(int signo, siginfo_t *si, void *data) -> void;
   #endif
   static volatile bool fpeRaised;
