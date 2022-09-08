@@ -52,7 +52,7 @@ auto CPU::fpeExceptionHandler(int signo, siginfo_t *si, void *data) -> void {
     auto uc = (ucontext_t*)data;
     auto fpregs = uc->uc_mcontext.fpregs;
     fpregs->mxcsr |= 0x1e80; //pm um om zm im
-  #elif defined(ARCHITECTURE_ARM64) || defined(PLATFORM_MACOS)
+  #elif defined(ARCHITECTURE_ARM64) && defined(PLATFORM_MACOS)
     auto uc = (ucontext_t*)data;
     auto fpregs = &uc->uc_mcontext->__ns;
     fpregs->__fpcr &= ~(FE_ALL_EXCEPT << 8);
