@@ -21,20 +21,13 @@ CPU cpu;
 auto CPU::load(Node::Object parent) -> void {
   node = parent->append<Node::Object>("CPU");
   debugger.load(node);
-#if defined(FPE_HANDLER_VECTORED)
-  fpeHandler = AddVectoredExceptionHandler(1, fpeVectoredExceptionHandler);
-#endif
+  fpe::install();
 }
 
 auto CPU::unload() -> void {
   debugger.unload();
   node.reset();
-#if defined(FPE_HANDLER_VECTORED)
-  if(fpeHandler) {
-    RemoveVectoredExceptionHandler(fpeHandler);
-    fpeHandler = nullptr;
-  }
-#endif
+  fpe::uninstall();
 }
 
 auto CPU::main() -> void {
@@ -145,19 +138,6 @@ auto CPU::power(bool reset) -> void {
   cop2 = {};
   fesetround(FE_TONEAREST);
   context.setMode();
-  fpeRaised = false;
-#if defined(FPE_HANDLER_SIGNAL) || defined(FPE_HANDLER_SIGNAL_SJLJ)
-  struct sigaction act = {0};
-  act.sa_sigaction = fpeExceptionHandler;
-  act.sa_flags = SA_NODEFER | SA_SIGINFO | SA_ONSTACK;
-#if defined(PLATFORM_MACOS) && defined(ARCHITECTURE_ARM64)
-  sigaction(SIGILL, &act, NULL);
-  // signal(SIGILL, fpeExceptionHandler);
-#else
-  sigaction(SIGFPE, &act, NULL);
-  // signal(SIGFPE, fpeExceptionHandler);
-#endif
-#endif
 
   if constexpr(Accuracy::CPU::Recompiler) {
     auto buffer = ares::Memory::FixedAllocator::get().tryAcquire(64_MiB);

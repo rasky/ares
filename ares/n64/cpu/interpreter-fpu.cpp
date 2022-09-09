@@ -1,70 +1,17 @@
-volatile bool CPU::fpeRaised;
-
-// #include <setjmp.h>
-
-#if defined(FPE_HANDLER_SIGNAL_SJLJ)
-sigjmp_buf fpejmp;
-#endif
-int fpeexc;
-
 auto CPU::fpeBegin() -> void {
     fpeEnd();
-    int fpe = 0;
-    if(fpu.csr.enable.inexact)          fpe |= FE_INEXACT;
-    if(fpu.csr.enable.underflow)        fpe |= FE_UNDERFLOW;
-    if(fpu.csr.enable.overflow)         fpe |= FE_OVERFLOW;
-    if(fpu.csr.enable.divisionByZero)   fpe |= FE_DIVBYZERO;
-    if(fpu.csr.enable.invalidOperation) fpe |= FE_INVALID;
-    feenableexcept(fpe);
-#if !(defined(PLATFORM_MACOS) && defined(ARCHITECTURE_ARM64))
-    feclearexcept(FE_ALL_EXCEPT);
-#endif
+    int exc_mask = 0;
+    if(fpu.csr.enable.inexact)          exc_mask |= FE_INEXACT;
+    if(fpu.csr.enable.underflow)        exc_mask |= FE_UNDERFLOW;
+    if(fpu.csr.enable.overflow)         exc_mask |= FE_OVERFLOW;
+    if(fpu.csr.enable.divisionByZero)   exc_mask |= FE_DIVBYZERO;
+    if(fpu.csr.enable.invalidOperation) exc_mask |= FE_INVALID;
+    fpe::begin(exc_mask);
 }
 
 auto CPU::fpeEnd() -> void {
-    fedisableexcept(FE_ALL_EXCEPT);
+    fpe::end(FE_ALL_EXCEPT);
 }
-
-#if defined(FPE_HANDLER_SIGNAL) || defined(FPE_HANDLER_SIGNAL_SJLJ)
-auto CPU::fpeExceptionHandler(int signo, siginfo_t *si, void *data) -> void {
-  print("fpeExceptionHandler ", signo, "\n");
-  if(!fpeRaised) {
-#if defined(PLATFORM_MACOS) && defined(ARCHITECTURE_ARM64)
-    // Unfortunately, there does not seem to be a way to know which FPU exception triggered
-    // on macOS ARM64. The information does not appear to be present in siginfo_t, nor it
-    // is available from the state returned by fegetenv() (FPCR, FPSR). If it's somewhere,
-    // it's well hidden.
-    fpeexc = 0;
-#else
-    switch(si->si_code) {
-    case FPE_FLTDIV: fpeexc = FE_DIVBYZERO; break;
-    case FPE_FLTOVF: fpeexc = FE_OVERFLOW; break;
-    case FPE_FLTUND: fpeexc = FE_UNDERFLOW; break;
-    case FPE_FLTRES: fpeexc = FE_INEXACT; break;
-    case FPE_FLTINV: fpeexc = FE_INVALID; break;
-    default: fpeexc = 0; break;
-    }
-#endif
-#if defined(FPE_HANDLER_SIGNAL_SJLJ)
-    siglongjmp(fpejmp, 1);
-#else
-  #if defined(ARCHITECTURE_AMD64)
-    auto uc = (ucontext_t*)data;
-    auto fpregs = uc->uc_mcontext.fpregs;
-    fpregs->mxcsr |= 0x1e80; //pm um om zm im
-  #elif defined(ARCHITECTURE_ARM64) && defined(PLATFORM_MACOS)
-    auto uc = (ucontext_t*)data;
-    auto fpregs = &uc->uc_mcontext->__ns;
-    fpregs->__fpcr &= ~(FE_ALL_EXCEPT << 8);
-  #else
-    #error Unimplemented architecture
-  #endif
-    fpeRaised = true;
-#endif
-  } else
-    abort();
-}
-#endif
 
 auto CPU::FPU::setFloatingPointMode(bool mode) -> void {
   if(mode == 0) {
@@ -254,84 +201,6 @@ auto CPU::fpeRaiseException(int exc) -> bool {
   return true;
 }
 
-#if defined(FPE_HANDLER_VECTORED) || defined(FPE_HANDLER_SEH)
-auto CPU::fpeExceptionFilter(u32 code) -> int {
-  switch(code) {
-  case EXCEPTION_FLT_DIVIDE_BY_ZERO:    fpeexc = FE_DIVBYZERO; break;
-  case EXCEPTION_FLT_INEXACT_RESULT:    fpeexc = FE_INEXACT; break;
-  case EXCEPTION_FLT_OVERFLOW:          fpeexc = FE_OVERFLOW; break;
-  case EXCEPTION_FLT_UNDERFLOW:         fpeexc = FE_UNDERFLOW; break;
-  case EXCEPTION_FLT_INVALID_OPERATION: fpeexc = FE_INVALID; break;
-  default: return EXCEPTION_CONTINUE_SEARCH;
-  }
-  return EXCEPTION_EXECUTE_HANDLER;
-}
-#endif
-
-#if defined(FPE_HANDLER_SEH)
-#define CHECK_FPE(type, operation) ({ \
-  type res; \
-  __try { \
-    /* due to an LLVM limitation, it is not possible to catch an asynchronous */ \
-    /* exception generated in the same frame as the catching __try. */ \
-    res = [&] { return operation; }(); \
-  } __except(fpeExceptionFilter(exception_code())) { \
-    fpeRaiseException(fpeexc); \
-    return; \
-  } \
-  (res); \
-})
-#endif
-
-#if defined(FPE_HANDLER_VECTORED)
-auto NTAPI fpeVectoredExceptionHandler(EXCEPTION_POINTERS* info) -> LONG
-{
-	auto code = info->ExceptionRecord->ExceptionCode;
-  if(cpu.fpeExceptionFilter(code) == EXCEPTION_CONTINUE_SEARCH) {
-    return EXCEPTION_CONTINUE_SEARCH;
-  }
-  //disable exceptions
-#if defined(ARCHITECTURE_AMD64)
-  info->ContextRecord->MxCsr |= 0x1e80; //pm um om zm im
-#elif defined(ARCHITECTURE_ARM64)
-  info->ContextRecord->Fpcr &= ~0x1f00; //ixe ufe ofe dze ioe
-#else
-  #error Unimplemented architecture
-#endif
-  CPU::fpeRaised = true;
-  return EXCEPTION_CONTINUE_EXECUTION;
-}
-#endif
-
-#if defined(FPE_HANDLER_VECTORED) || defined(FPE_HANDLER_SIGNAL)
-#define CHECK_FPE(type, operation) ({ \
-  fpeRaised = false; \
-  volatile type res = operation; \
-  if(fpeRaised) { \
-    fpeRaised = false; \
-    fpeRaiseException(fpeexc); \
-    fpeBegin(); \
-    return; \
-  } \
-  (res); \
-})
-#endif
-
-#if defined(FPE_HANDLER_SIGNAL_SJLJ)
-#define CHECK_FPE(type, operation) ({ \
-  volatile type res; \
-  fpeRaised = false; \
-  if(sigsetjmp(fpejmp, 1)) { \
-    fpeRaised = false; \
-    fpeRaiseException(fpeexc); \
-    return; \
-  } else { \
-    res = operation; \
-  } \
-  (res); \
-})
-#endif
-
 #define CF fpu.csr.compare
 #define FD(type) fgr<type>(fd)
 #define FS(type) fgr<type>(fs)
@@ -376,12 +245,12 @@ auto CPU::FABS_D(u8 fd, u8 fs) -> void {
 
 auto CPU::FADD_S(u8 fd, u8 fs, u8 ft) -> void {
   if(!scc.status.enable.coprocessor1) return exception.coprocessor1();
-  FD(f32) = CHECK_FPE(f32, FS(f32) + FT(f32));
+  FD(f32) = CHECK_FPE(f32, FS(f32) + FT(f32), fpeRaiseException);
 }
 
 auto CPU::FADD_D(u8 fd, u8 fs, u8 ft) -> void {
   if(!scc.status.enable.coprocessor1) return exception.coprocessor1();
-  FD(f64) = CHECK_FPE(f64, FS(f64) + FT(f64));
+  FD(f64) = CHECK_FPE(f64, FS(f64) + FT(f64), fpeRaiseException);
 }
 
 auto CPU::FCEIL_L_S(u8 fd, u8 fs) -> void {
@@ -630,12 +499,12 @@ auto CPU::FCVT_W_D(u8 fd, u8 fs) -> void {
 
 auto CPU::FDIV_S(u8 fd, u8 fs, u8 ft) -> void {
   if(!scc.status.enable.coprocessor1) return exception.coprocessor1();
-  FD(f32) = CHECK_FPE(f32, FS(f32) / FT(f32));
+  FD(f32) = CHECK_FPE(f32, FS(f32) / FT(f32), fpeRaiseException);
 }
 
 auto CPU::FDIV_D(u8 fd, u8 fs, u8 ft) -> void {
   if(!scc.status.enable.coprocessor1) return exception.coprocessor1();
-  FD(f64) = CHECK_FPE(f64, FS(f64) / FT(f64));
+  FD(f64) = CHECK_FPE(f64, FS(f64) / FT(f64), fpeRaiseException);
 }
 
 auto CPU::FFLOOR_L_S(u8 fd, u8 fs) -> void {
@@ -670,22 +539,22 @@ auto CPU::FMOV_D(u8 fd, u8 fs) -> void {
 
 auto CPU::FMUL_S(u8 fd, u8 fs, u8 ft) -> void {
   if(!scc.status.enable.coprocessor1) return exception.coprocessor1();
-  FD(f32) = CHECK_FPE(f32, FS(f32) * FT(f32));
+  FD(f32) = CHECK_FPE(f32, FS(f32) * FT(f32), fpeRaiseException);
 }
 
 auto CPU::FMUL_D(u8 fd, u8 fs, u8 ft) -> void {
   if(!scc.status.enable.coprocessor1) return exception.coprocessor1();
-  FD(f64) = CHECK_FPE(f64, FS(f64) * FT(f64));
+  FD(f64) = CHECK_FPE(f64, FS(f64) * FT(f64), fpeRaiseException);
 }
 
 auto CPU::FNEG_S(u8 fd, u8 fs) -> void {
   if(!scc.status.enable.coprocessor1) return exception.coprocessor1();
-  FD(f32) = CHECK_FPE(f32, -FS(f32));
+  FD(f32) = CHECK_FPE(f32, -FS(f32), fpeRaiseException);
 }
 
 auto CPU::FNEG_D(u8 fd, u8 fs) -> void {
   if(!scc.status.enable.coprocessor1) return exception.coprocessor1();
-  FD(f64) = CHECK_FPE(f64, -FS(f64));
+  FD(f64) = CHECK_FPE(f64, -FS(f64), fpeRaiseException);
 }
 
 auto CPU::FROUND_L_S(u8 fd, u8 fs) -> void {
@@ -720,12 +589,12 @@ auto CPU::FSQRT_D(u8 fd, u8 fs) -> void {
 
 auto CPU::FSUB_S(u8 fd, u8 fs, u8 ft) -> void {
   if(!scc.status.enable.coprocessor1) return exception.coprocessor1();
-  FD(f32) = CHECK_FPE(f32, FS(f32) - FT(f32));
+  FD(f32) = CHECK_FPE(f32, FS(f32) - FT(f32), fpeRaiseException);
 }
 
 auto CPU::FSUB_D(u8 fd, u8 fs, u8 ft) -> void {
   if(!scc.status.enable.coprocessor1) return exception.coprocessor1();
-  FD(f64) = CHECK_FPE(f64, FS(f64) - FT(f64));
+  FD(f64) = CHECK_FPE(f64, FS(f64) - FT(f64), fpeRaiseException);
 }
 
 auto CPU::FTRUNC_L_S(u8 fd, u8 fs) -> void {
