@@ -143,6 +143,7 @@ auto CPU::setControlRegisterFPU(n5 index, n32 data) -> void {
        fpu.csr.enable.overflow         != enablePrevious.overflow ||
        fpu.csr.enable.invalidOperation != enablePrevious.invalidOperation)
      fpeBegin();
+    fpeRaise();
   } break;
   }
 }
@@ -182,7 +183,21 @@ auto CPU::fpeInvalidOperation() -> bool {
     return false;
 }
 
-auto CPU::fpeRaiseException(int exc) -> bool {
+auto CPU::fpeUnimplemented() -> bool {
+  fpu.csr.cause.unimplementedOperation = 1;
+  return true;
+}
+
+auto CPU::fpeRaise() -> void {
+  if(fpu.csr.cause.divisionByZero   && fpu.csr.enable.divisionByZero)   return exception.floatingPoint();
+  if(fpu.csr.cause.inexact          && fpu.csr.enable.inexact)          return exception.floatingPoint();
+  if(fpu.csr.cause.invalidOperation && fpu.csr.enable.invalidOperation) return exception.floatingPoint();
+  if(fpu.csr.cause.overflow         && fpu.csr.enable.overflow)         return exception.floatingPoint();
+  if(fpu.csr.cause.underflow        && fpu.csr.enable.underflow)        return exception.floatingPoint();
+  if(fpu.csr.cause.unimplementedOperation)                              return exception.floatingPoint();
+}
+
+auto CPU::fpeSetCause(int exc) -> bool {
   if(!exc) {
     // We don't know which exception was set. So just set them all.
     if(fpu.csr.enable.inexact)          exc |= FE_INEXACT;
@@ -197,7 +212,7 @@ auto CPU::fpeRaiseException(int exc) -> bool {
   if(exc & FE_UNDERFLOW) fpeUnderflow();
   if(exc & FE_OVERFLOW)  fpeOverflow();
   if(exc & FE_INVALID)   fpeInvalidOperation();
-  exception.floatingPoint();
+  fpeRaise();
   return true;
 }
 
@@ -245,12 +260,12 @@ auto CPU::FABS_D(u8 fd, u8 fs) -> void {
 
 auto CPU::FADD_S(u8 fd, u8 fs, u8 ft) -> void {
   if(!scc.status.enable.coprocessor1) return exception.coprocessor1();
-  FD(f32) = CHECK_FPE(f32, FS(f32) + FT(f32), fpeRaiseException);
+  FD(f32) = CHECK_FPE(f32, FS(f32) + FT(f32), fpeSetCause);
 }
 
 auto CPU::FADD_D(u8 fd, u8 fs, u8 ft) -> void {
   if(!scc.status.enable.coprocessor1) return exception.coprocessor1();
-  FD(f64) = CHECK_FPE(f64, FS(f64) + FT(f64), fpeRaiseException);
+  FD(f64) = CHECK_FPE(f64, FS(f64) + FT(f64), fpeSetCause);
 }
 
 auto CPU::FCEIL_L_S(u8 fd, u8 fs) -> void {
@@ -499,12 +514,12 @@ auto CPU::FCVT_W_D(u8 fd, u8 fs) -> void {
 
 auto CPU::FDIV_S(u8 fd, u8 fs, u8 ft) -> void {
   if(!scc.status.enable.coprocessor1) return exception.coprocessor1();
-  FD(f32) = CHECK_FPE(f32, FS(f32) / FT(f32), fpeRaiseException);
+  FD(f32) = CHECK_FPE(f32, FS(f32) / FT(f32), fpeSetCause);
 }
 
 auto CPU::FDIV_D(u8 fd, u8 fs, u8 ft) -> void {
   if(!scc.status.enable.coprocessor1) return exception.coprocessor1();
-  FD(f64) = CHECK_FPE(f64, FS(f64) / FT(f64), fpeRaiseException);
+  FD(f64) = CHECK_FPE(f64, FS(f64) / FT(f64), fpeSetCause);
 }
 
 auto CPU::FFLOOR_L_S(u8 fd, u8 fs) -> void {
@@ -539,22 +554,22 @@ auto CPU::FMOV_D(u8 fd, u8 fs) -> void {
 
 auto CPU::FMUL_S(u8 fd, u8 fs, u8 ft) -> void {
   if(!scc.status.enable.coprocessor1) return exception.coprocessor1();
-  FD(f32) = CHECK_FPE(f32, FS(f32) * FT(f32), fpeRaiseException);
+  FD(f32) = CHECK_FPE(f32, FS(f32) * FT(f32), fpeSetCause);
 }
 
 auto CPU::FMUL_D(u8 fd, u8 fs, u8 ft) -> void {
   if(!scc.status.enable.coprocessor1) return exception.coprocessor1();
-  FD(f64) = CHECK_FPE(f64, FS(f64) * FT(f64), fpeRaiseException);
+  FD(f64) = CHECK_FPE(f64, FS(f64) * FT(f64), fpeSetCause);
 }
 
 auto CPU::FNEG_S(u8 fd, u8 fs) -> void {
   if(!scc.status.enable.coprocessor1) return exception.coprocessor1();
-  FD(f32) = CHECK_FPE(f32, -FS(f32), fpeRaiseException);
+  FD(f32) = CHECK_FPE(f32, -FS(f32), fpeSetCause);
 }
 
 auto CPU::FNEG_D(u8 fd, u8 fs) -> void {
   if(!scc.status.enable.coprocessor1) return exception.coprocessor1();
-  FD(f64) = CHECK_FPE(f64, -FS(f64), fpeRaiseException);
+  FD(f64) = CHECK_FPE(f64, -FS(f64), fpeSetCause);
 }
 
 auto CPU::FROUND_L_S(u8 fd, u8 fs) -> void {
@@ -589,19 +604,20 @@ auto CPU::FSQRT_D(u8 fd, u8 fs) -> void {
 
 auto CPU::FSUB_S(u8 fd, u8 fs, u8 ft) -> void {
   if(!scc.status.enable.coprocessor1) return exception.coprocessor1();
-  FD(f32) = CHECK_FPE(f32, FS(f32) - FT(f32), fpeRaiseException);
+  FD(f32) = CHECK_FPE(f32, FS(f32) - FT(f32), fpeSetCause);
 }
 
 auto CPU::FSUB_D(u8 fd, u8 fs, u8 ft) -> void {
   if(!scc.status.enable.coprocessor1) return exception.coprocessor1();
-  FD(f64) = CHECK_FPE(f64, FS(f64) - FT(f64), fpeRaiseException);
+  FD(f64) = CHECK_FPE(f64, FS(f64) - FT(f64), fpeSetCause);
 }
 
 auto CPU::FTRUNC_L_S(u8 fd, u8 fs) -> void {
   if(!scc.status.enable.coprocessor1) return exception.coprocessor1();
   auto f = FS(f32);
-  if (isinf(f) || isnan(f) || f > (1ll<<63-1) || f < -(1ll<<63)) {
-    if (!fpeInvalidOperation()) FD(s64) = 0xffff'ffff'ffff'ffff;
+  if (isinf(f) || isnan(f) || f > ~0ll>>1 || f < -(1ll<<63)) {
+    if (fpeUnimplemented()) return exception.floatingPoint();
+    FD(s64) = 0xffff'ffff'ffff'ffff;
   } else {
     FD(s64) = f < 0 ? ceil(f) : floor(f);
   }
@@ -610,8 +626,9 @@ auto CPU::FTRUNC_L_S(u8 fd, u8 fs) -> void {
 auto CPU::FTRUNC_L_D(u8 fd, u8 fs) -> void {
   if(!scc.status.enable.coprocessor1) return exception.coprocessor1();
   auto f = FS(f64);
-  if (isinf(f) || isnan(f) || f > (1ll<<63-1) || f < -(1ll<<63)) {
-    if (!fpeInvalidOperation()) FD(s64) = 0xffff'ffff'ffff'ffff;
+  if (isinf(f) || isnan(f) || f > ~0ll>>1 || f < -(1ll<<63)) {
+    if (fpeUnimplemented()) return exception.floatingPoint();
+    FD(s64) = 0xffff'ffff'ffff'ffff;
   } else {
     FD(s64) = f < 0 ? ceil(f) : floor(f);
   }
@@ -620,8 +637,9 @@ auto CPU::FTRUNC_L_D(u8 fd, u8 fs) -> void {
 auto CPU::FTRUNC_W_S(u8 fd, u8 fs) -> void {
   if(!scc.status.enable.coprocessor1) return exception.coprocessor1();
   auto f = FS(f32);
-  if (isinf(f) || isnan(f) || f > (1<<31-1) || f < -(1<<31)) {
-    if (!fpeInvalidOperation()) FD(s32) = 0xffff'ffff;
+  if (isinf(f) || isnan(f) || f > ~0>>1 || f < -(1<<31)) {
+    if (fpeUnimplemented()) return exception.floatingPoint();
+    FD(s32) = 0xffff'ffff;
   } else {
     FD(s32) = f < 0 ? ceil(f) : floor(f);
   }
@@ -630,8 +648,9 @@ auto CPU::FTRUNC_W_S(u8 fd, u8 fs) -> void {
 auto CPU::FTRUNC_W_D(u8 fd, u8 fs) -> void {
   if(!scc.status.enable.coprocessor1) return exception.coprocessor1();
   auto f = FS(f64);
-  if (isinf(f) || isnan(f) || f > (1<<31-1) || f < -(1<<31)) {
-    if (!fpeInvalidOperation()) FD(s32) = 0xffff'ffff;
+  if (isinf(f) || isnan(f) || f > ~0>>1 || f < -(1<<31)) {
+    if (fpeUnimplemented()) return exception.floatingPoint();
+    FD(s32) = 0xffff'ffff;
   } else {
     FD(s32) = f < 0 ? ceil(f) : floor(f);
   }
