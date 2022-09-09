@@ -185,7 +185,12 @@ auto install() -> void {
 
 auto uninstall() -> void {
 #if defined(FPE_HANDLER_SIGNAL) || defined(FPE_HANDLER_SIGNAL_SJLJ)
-  // TODO
+  struct sigaction act = { .sa_handler = SIG_DFL };
+  #if defined(PLATFORM_MACOS) && defined(ARCHITECTURE_ARM64)
+  sigaction(SIGILL, &act, NULL);
+  #else
+  sigaction(SIGFPE, &act, NULL);
+  #endif
 #endif
 
 #if defined(FPE_HANDLER_VECTORED)
