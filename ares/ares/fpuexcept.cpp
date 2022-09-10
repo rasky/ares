@@ -2,11 +2,6 @@
 
 #define FE_UNKNOWN  ((int)0)
 
-#if defined(PLATFORM_MACOS) || defined(PLATFORM_WINDOWS)
-int feenableexcept(unsigned int excepts);
-int fedisableexcept(unsigned int excepts);
-#endif
-
 #if defined(PLATFORM_MACOS)
 int feenableexcept(unsigned int excepts) {
     static fenv_t fenv;

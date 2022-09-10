@@ -646,10 +646,11 @@ struct CPU : Thread {
   auto fpeOverflow() -> bool;
   auto fpeInvalidOperation() -> bool;
   auto fpeUnimplemented() -> bool;
-  auto fpeRaise() -> void;
   auto fpeSetCause(int exc) -> bool;
+  auto fpeExceptionFilter(u32 code) -> int;
   auto fpeBegin() -> void;
   auto fpeEnd() -> void;
+  auto fpeRaise() -> void;
 
   auto BC1(bool value, bool likely, s16 imm) -> void;
   auto CFC1(r64& rt, u8 rd) -> void;

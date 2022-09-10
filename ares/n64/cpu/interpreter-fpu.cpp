@@ -615,7 +615,7 @@ auto CPU::FSUB_D(u8 fd, u8 fs, u8 ft) -> void {
 auto CPU::FTRUNC_L_S(u8 fd, u8 fs) -> void {
   if(!scc.status.enable.coprocessor1) return exception.coprocessor1();
   auto f = FS(f32);
-  if (isinf(f) || isnan(f) || f > ~0ll>>1 || f < -(1ll<<63)) {
+  if (isinf(f) || isnan(f) || f >= 0x1p+63 || f < 0x1p-63) {
     if (fpeUnimplemented()) return exception.floatingPoint();
     FD(s64) = 0xffff'ffff'ffff'ffff;
   } else {
@@ -626,7 +626,7 @@ auto CPU::FTRUNC_L_S(u8 fd, u8 fs) -> void {
 auto CPU::FTRUNC_L_D(u8 fd, u8 fs) -> void {
   if(!scc.status.enable.coprocessor1) return exception.coprocessor1();
   auto f = FS(f64);
-  if (isinf(f) || isnan(f) || f > ~0ll>>1 || f < -(1ll<<63)) {
+  if (isinf(f) || isnan(f) || f >= 0x1p+63 || f < -0x1+63) {
     if (fpeUnimplemented()) return exception.floatingPoint();
     FD(s64) = 0xffff'ffff'ffff'ffff;
   } else {
@@ -637,7 +637,7 @@ auto CPU::FTRUNC_L_D(u8 fd, u8 fs) -> void {
 auto CPU::FTRUNC_W_S(u8 fd, u8 fs) -> void {
   if(!scc.status.enable.coprocessor1) return exception.coprocessor1();
   auto f = FS(f32);
-  if (isinf(f) || isnan(f) || f > ~0>>1 || f < -(1<<31)) {
+  if (isinf(f) || isnan(f) || f >= 0x1p+31f || f < -0x1p+31f) {
     if (fpeUnimplemented()) return exception.floatingPoint();
     FD(s32) = 0xffff'ffff;
   } else {
@@ -648,7 +648,7 @@ auto CPU::FTRUNC_W_S(u8 fd, u8 fs) -> void {
 auto CPU::FTRUNC_W_D(u8 fd, u8 fs) -> void {
   if(!scc.status.enable.coprocessor1) return exception.coprocessor1();
   auto f = FS(f64);
-  if (isinf(f) || isnan(f) || f > ~0>>1 || f < -(1<<31)) {
+  if (isinf(f) || isnan(f) || f >= 0x1p+31f || f < -0x1p+31f) {
     if (fpeUnimplemented()) return exception.floatingPoint();
     FD(s32) = 0xffff'ffff;
   } else {
