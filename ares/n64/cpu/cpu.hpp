@@ -645,8 +645,9 @@ struct CPU : Thread {
   auto fpeUnderflow() -> bool;
   auto fpeOverflow() -> bool;
   auto fpeInvalidOperation() -> bool;
-  auto fpeRaiseException(int exc) -> bool;
-  auto fpeExceptionFilter(u32 code) -> int;
+  auto fpeUnimplemented() -> bool;
+  auto fpeRaise() -> void;
+  auto fpeSetCause(int exc) -> bool;
   auto fpeBegin() -> void;
   auto fpeEnd() -> void;
 

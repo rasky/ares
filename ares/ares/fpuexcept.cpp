@@ -1,6 +1,4 @@
-#include <stdlib.h>
 #include "fpuexcept.hpp"
-#include <fenv.h>
 
 #define FE_UNKNOWN  ((int)0)
 
@@ -134,7 +132,7 @@ auto exceptionHandler(int signo, siginfo_t *si, void *data) -> void {
 #endif
 
 #if defined(FPE_HANDLER_VECTORED) || defined(FPE_HANDLER_SEH)
-auto exceptionFilter(u32 code) -> int {
+auto internal::exceptionFilter(u32 code) -> int {
   switch(code) {
   case EXCEPTION_FLT_DIVIDE_BY_ZERO:    internal::raised_mask = FE_DIVBYZERO; break;
   case EXCEPTION_FLT_INEXACT_RESULT:    internal::raised_mask = FE_INEXACT; break;
@@ -151,7 +149,7 @@ auto exceptionFilter(u32 code) -> int {
 auto NTAPI vectoredExceptionHandler(EXCEPTION_POINTERS* info) -> LONG
 {
 	auto code = info->ExceptionRecord->ExceptionCode;
-  if(exceptionFilter(code) == EXCEPTION_CONTINUE_SEARCH) {
+  if(internal::exceptionFilter(code) == EXCEPTION_CONTINUE_SEARCH) {
     return EXCEPTION_CONTINUE_SEARCH;
   }
   //disable exceptions
@@ -179,7 +177,7 @@ auto install() -> void {
   #endif
 #endif
 #if defined(FPE_HANDLER_VECTORED)
-  internal::handler = AddVectoredExceptionHandler(1, fpeVectoredExceptionHandler);
+  internal::handler = AddVectoredExceptionHandler(1, vectoredExceptionHandler);
 #endif
 }
 

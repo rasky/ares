@@ -1,5 +1,6 @@
 #pragma once
 
+#include <nall/platform.hpp>
 #include <nall/intrinsics.hpp>
 #include <nall/maybe.hpp>
 
