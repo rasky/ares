@@ -53,6 +53,7 @@ namespace fpe {
 
     #if defined(FPE_HANDLER_VECTORED) || defined(FPE_HANDLER_SEH)
     auto exceptionFilter(u32 code) -> int;
+    auto NTAPI vectoredExceptionHandler(EXCEPTION_POINTERS* info) -> LONG;
     #endif
   }
 
@@ -75,6 +76,13 @@ namespace fpe {
   } \
   (res); \
 })
+#define GUARD_FPE(operation) ({ \
+  __try { \
+    [&] { operation; }(); \
+  } __except(fpe::internal::vectoredExceptionHandler(exception_info())) { \
+    abort(); \
+  } \
+})
 #endif
 
 #if defined(FPE_HANDLER_VECTORED) || defined(FPE_HANDLER_SIGNAL)
@@ -88,6 +96,7 @@ namespace fpe {
   } \
   (res); \
 })
+#define GUARD_FPE(operation) operation
 #endif
 
 #if defined(FPE_HANDLER_SIGNAL_SJLJ)
@@ -106,4 +115,5 @@ namespace fpe {
   } \
   (res); \
 })
+#define GUARD_FPE(operation) operation
 #endif

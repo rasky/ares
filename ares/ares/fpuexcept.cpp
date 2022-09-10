@@ -143,10 +143,8 @@ auto internal::exceptionFilter(u32 code) -> int {
   }
   return EXCEPTION_EXECUTE_HANDLER;
 }
-#endif
 
-#if defined(FPE_HANDLER_VECTORED)
-auto NTAPI vectoredExceptionHandler(EXCEPTION_POINTERS* info) -> LONG
+auto NTAPI internal::vectoredExceptionHandler(EXCEPTION_POINTERS* info) -> LONG
 {
 	auto code = info->ExceptionRecord->ExceptionCode;
   if(internal::exceptionFilter(code) == EXCEPTION_CONTINUE_SEARCH) {
@@ -177,7 +175,7 @@ auto install() -> void {
   #endif
 #endif
 #if defined(FPE_HANDLER_VECTORED)
-  internal::handler = AddVectoredExceptionHandler(1, vectoredExceptionHandler);
+  internal::handler = AddVectoredExceptionHandler(1, internal::vectoredExceptionHandler);
 #endif
 }
 
