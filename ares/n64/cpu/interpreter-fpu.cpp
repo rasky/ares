@@ -615,7 +615,7 @@ auto CPU::FSUB_D(u8 fd, u8 fs, u8 ft) -> void {
 auto CPU::FTRUNC_L_S(u8 fd, u8 fs) -> void {
   if(!scc.status.enable.coprocessor1) return exception.coprocessor1();
   auto f = FS(f32);
-  if (isinf(f) || isnan(f) || f >= 0x1p+63 || f < 0x1p-63) {
+  if (isinf(f) || isnan(f) || f >= 0x1p+63 || f < -0x1p-63) {
     if (fpeUnimplemented()) return exception.floatingPoint();
     FD(s64) = 0xffff'ffff'ffff'ffff;
   } else {
