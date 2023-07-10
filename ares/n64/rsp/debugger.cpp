@@ -57,6 +57,10 @@ auto RSP::Debugger::instruction() -> void {
       tracer.instruction->notify(rsp.disassembler.disassemble(address, instruction), {});
       rsp.disassembler.showColors = 1;
     }
+    if(tracer.instructionCountdown) {
+      if (--tracer.instructionCountdown == 0)
+        tracer.instruction->setEnabled(false);
+    }
   }
 }
 
