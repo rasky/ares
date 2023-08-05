@@ -57,6 +57,27 @@ auto RSP::EMUX(cr32& rt, u32 code) -> void {
         }
         if (partial) fputc('\n', stdout);
     }   break;
+    case 0x41: case 0x44: { // dump_regs(cop0)
+        static const char *cop0_reg_names[16] = { 
+            "dma_spaddr", "dma_ramaddr", "dma_read",     "dma_write",
+            "sp_status",  "dma_full",    "dma_busy",     "semaphore",
+            "dp_start",   "dp_end",      "dp_current",   "dp_status",
+            "dp_clock",   "dp_busy",     "dp_pipe_busy", "dp_tmem_busy"
+        };
+        n32 mask = rt.u32;
+        const char *fmt = code & 0x8 ? "%s: %-12d" : "%s: %04x %04x";
+        bool partial = false;
+        for (u32 i : range(16)) {
+            if (mask && !mask.bit(i)) continue;
+            u32 val;
+            if (i == 7) val = status.semaphore; // avoid side effects
+            else        val = (i & 8) ? Nintendo64::rdp.readWord(i & 7, *this) : Nintendo64::rsp.ioRead(i & 7);
+            fprintf(stdout, fmt, cop0_reg_names[i], val >> 16, val & 0xFFFF);
+            if (i % 4 == 3) fputc('\n', stdout),  partial = false;
+            else            fputs("   ", stdout), partial = true;
+        }
+        if (partial) fputc('\n', stdout);
+    }   break;
     case 0x42: case 0x46: case 0x4A: case 0x4C: { // dump_regs(cop2)
         auto dump_vr = [&](r128& vr) {
             for (auto i : range(8)) {
