@@ -119,9 +119,9 @@ auto RSP::EMUX(cr32& rt, u32 code) -> void {
                 dump_vr(*accs[i]);
                 fputs("   ", stdout);
                 switch (i) {
-                case 0: fprintf(stdout, "vco: "); dump_vc16(vpu.vcoh, vpu.vcol); break;
-                case 1: fprintf(stdout, "vcc: "); dump_vc16(vpu.vcch, vpu.vccl); break;
-                case 2: fprintf(stdout, "vcc: "); dump_vc8(vpu.vce); break;
+                case 0: fprintf(stdout, "vco: "); dump_vc16(vpu.vcoh, vpu.vcol); fprintf(stdout, "\n"); break;
+                case 1: fprintf(stdout, "vcc: "); dump_vc16(vpu.vcch, vpu.vccl); fprintf(stdout, "\n"); break;
+                case 2: fprintf(stdout, "vce: "); dump_vc8(vpu.vce); fprintf(stdout, "\n"); break;
                 }
             }
         }
