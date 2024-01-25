@@ -29,7 +29,7 @@ struct Instruction : Tracer {
   }
 
   auto setEnabled(bool enabled) -> void {
-    Tracer::setEnabled(enabled);
+    Tracer::setTerminal(enabled);
     if(!enabled) {
       _omitted = 0;
       setMask(_mask);

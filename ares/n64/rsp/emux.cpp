@@ -71,7 +71,7 @@ auto RSP::EMUX(cr32& rt, u32 code) -> void {
             if (mask && !mask.bit(i)) continue;
             u32 val;
             if (i == 7) val = status.semaphore; // avoid side effects
-            else        val = (i & 8) ? Nintendo64::rdp.readWord(i & 7, *this) : Nintendo64::rsp.ioRead(i & 7);
+            else        val = (i & 8) ? Nintendo64::rdp.readWord(i & 7, *this) : Nintendo64::rsp.ioRead(i & 7, *this);
             fprintf(stdout, fmt, cop0_reg_names[i], val >> 16, val & 0xFFFF);
             if (i % 4 == 3) fputc('\n', stdout),  partial = false;
             else            fputs("   ", stdout), partial = true;
