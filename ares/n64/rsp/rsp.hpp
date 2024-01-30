@@ -69,6 +69,7 @@ struct RSP : Thread, Memory::RCP<RSP> {
       Node::Debugger::Tracer::Instruction instruction;
       Node::Debugger::Tracer::Notification io;
       i32 instructionCountdown = 0;
+      u32 traceStartCycle = 0;
     } tracer;
   } debugger;
 
@@ -120,6 +121,11 @@ struct RSP : Thread, Memory::RCP<RSP> {
     u32 address;
     u32 instruction;
     u32 clocks;
+
+    u32 clocksTotal;
+    u32 stallCount;
+    u32 dblIssueCount;
+
     u1 singleIssue;
 
     struct Stage {
@@ -148,6 +154,8 @@ struct RSP : Thread, Memory::RCP<RSP> {
 
     auto begin() -> void {
       clocks = 0;
+      stallCount = 0;
+      dblIssueCount = 0;
     }
 
     auto end() -> void {
@@ -168,6 +176,7 @@ struct RSP : Thread, Memory::RCP<RSP> {
       previous[1] = previous[0];
       previous[0] = {};
       clocks += 3;
+      ++stallCount;
     }
 
     auto issue(const OpInfo& op) -> void {

@@ -9,6 +9,7 @@ auto RSP::EMUX(cr32& rt, u32 code) -> void {
     case 0x20: // trace(start)
         debugger.tracer.instruction->setEnabled(true);
         debugger.tracer.instructionCountdown = 0;
+        debugger.tracer.traceStartCycle = rsp.pipeline.clocksTotal / 3;
         break;
     case 0x21: // trace(count)
         printf("[emux] trace(count): %08x\n", rt.u32);
