@@ -1,4 +1,4 @@
-static const vector<string> commandNames = {
+static const std::vector<string> commandNames = {
   "No_Operation", "Invalid_01", "Invalid_02", "Invalid_03",
   "Invalid_04",   "Invalid_05", "Invalid_06", "Invalid_07",
   "Unshaded_Triangle",
@@ -193,7 +193,7 @@ auto RDP::render() -> void {
     u64 op = fetch();
 
     if(debugger.tracer.command->enabled()) {
-      debugger.command({hex(op, 16L), "  ", commandNames(op >> 56 & 0x3f, "Invalid")});
+      debugger.command({hex(op, 16L), "  ", ((op >> 56 & 0x3f) < commandNames.size() ? commandNames[op >> 56 & 0x3f] : string("Invalid"))});
     }
 
     switch(op >> 56 & 0x3f) {
