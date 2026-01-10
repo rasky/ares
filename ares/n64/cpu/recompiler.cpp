@@ -1163,6 +1163,12 @@ auto CPU::Recompiler::emitSCC(u32 instruction) -> bool {
     return 0;
   }
 
+  //XHEXDUMP
+  case 0x27: {
+    callf(&CPU::XHEXDUMP, mem(XRd), mem(XRt));
+    return 0;
+  }
+
   }
 
   return 0;

@@ -979,6 +979,7 @@ struct CPU : Thread {
   //emux.cpp
   auto XDETECT(r64& rd) -> void;
   auto XLOG(cr64& rd, cr64& rt) -> void;
+  auto XHEXDUMP(cr64& rd, cr64& rt) -> void;
 };
 
 extern CPU cpu;
