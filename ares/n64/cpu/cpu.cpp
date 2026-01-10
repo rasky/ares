@@ -19,6 +19,7 @@ CPU cpu;
 #include "debugger.cpp"
 #include "serialization.cpp"
 #include "disassembler.cpp"
+#include "emux.cpp"
 
 auto CPU::load(Node::Object parent) -> void {
   node = parent->append<Node::Object>("CPU");

@@ -103,6 +103,9 @@ auto CPU::Recompiler::emit(u64 vaddr, u32 address, bool singleInstruction) -> Bl
 #define Fdn (instruction >>  6 & 31)
 #define Fsn (instruction >> 11 & 31)
 #define Ftn (instruction >> 16 & 31)
+#define XRtn   (instruction >> 15 & 31)
+#define XRdn   (instruction >> 20 & 31)
+#define XCODE  (instruction >> 6  & 511)
 
 #define Rd        IpuReg(r[0]) + Rdn * sizeof(r64)
 #define Rt        IpuReg(r[0]) + Rtn * sizeof(r64)
@@ -117,6 +120,9 @@ auto CPU::Recompiler::emit(u64 vaddr, u32 address, bool singleInstruction) -> Bl
 #define Fd        FpuReg(r[0]) + Fdn * sizeof(r64)
 #define Fs        FpuReg(r[0]) + Fsn * sizeof(r64)
 #define Ft        FpuReg(r[0]) + Ftn * sizeof(r64)
+
+#define XRd       IpuReg(r[0]) + XRdn * sizeof(r64)
+#define XRt       IpuReg(r[0]) + XRtn * sizeof(r64)
 
 #define i16 s16(instruction)
 #define n16 u16(instruction)
@@ -1143,6 +1149,18 @@ auto CPU::Recompiler::emitSCC(u32 instruction) -> bool {
   case 0x18: {
     callf(&CPU::ERET);
     return 1;
+  }
+
+  //XDETECT
+  case 0x20: {
+    callf(&CPU::XDETECT, mem(XRd));
+    return 0;
+  }
+
+  //XLOG
+  case 0x25: {
+    callf(&CPU::XLOG, mem(XRd), mem(XRt));
+    return 0;
   }
 
   }

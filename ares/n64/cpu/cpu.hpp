@@ -25,6 +25,7 @@ struct CPU : Thread {
       Node::Debugger::Tracer::Notification exception;
       Node::Debugger::Tracer::Notification interrupt;
       Node::Debugger::Tracer::Notification tlb;
+      Node::Debugger::Tracer::Notification emux;
     } tracer;
   } debugger;
 
@@ -974,6 +975,10 @@ struct CPU : Thread {
     uint64_t vbase;
     uint64_t pbase;
   } devirtualizeCache;
+
+  //emux.cpp
+  auto XDETECT(r64& rd) -> void;
+  auto XLOG(cr64& rd, cr64& rt) -> void;
 };
 
 extern CPU cpu;

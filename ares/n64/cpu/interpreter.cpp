@@ -2,6 +2,8 @@
 #define RD ipu.r[RDn]
 #define RT ipu.r[RTn]
 #define RS ipu.r[RSn]
+#define XRT ipu.r[XRTn]
+#define XRD ipu.r[XRDn]
 
 #define jp(id, name)      case id: return decoder##name(instruction)
 #define op(id, name, ...) case id: return name(__VA_ARGS__)
@@ -14,6 +16,9 @@
 #define FD     (OP >>  6 & 31)
 #define FS     (OP >> 11 & 31)
 #define FT     (OP >> 16 & 31)
+#define XRTn   (OP >> 15 & 31)
+#define XRDn   (OP >> 20 & 31)
+#define XCODE  (OP >> 6  & 511)
 #define IMMi16 s16(OP)
 #define IMMu16 u16(OP)
 #define IMMu26 (OP & 0x03ff'ffff)
@@ -219,6 +224,8 @@ auto CPU::decoderSCC(u32 instruction) -> void {
   op(0x06, TLBWR);
   op(0x08, TLBP);
   br(0x18, ERET);
+  op(0x20, XDETECT, XRD);
+  op(0x25, XLOG, XRD, XRT);
   }
 
   //undefined instructions do not throw a reserved instruction exception
@@ -379,6 +386,8 @@ auto CPU::INVALID() -> void {
   exception.reservedInstruction();
 }
 
+#undef XRD
+#undef XRT
 #undef SA
 #undef RDn
 #undef RTn
@@ -386,6 +395,9 @@ auto CPU::INVALID() -> void {
 #undef FD
 #undef FS
 #undef FT
+#undef XRTn
+#undef XRDn
+#undef XCODE
 #undef IMMi16
 #undef IMMu16
 #undef IMMu26
