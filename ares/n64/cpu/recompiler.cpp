@@ -1181,6 +1181,12 @@ auto CPU::Recompiler::emitSCC(u32 instruction) -> bool {
     return 0;
   }
 
+  //XIOCTL
+  case 0x2c: {
+    callf(&CPU::XIOCTL, imm(XCODE));
+    return 0;
+  }
+
   }
 
   return 0;

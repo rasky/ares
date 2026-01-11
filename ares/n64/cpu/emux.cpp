@@ -8,6 +8,7 @@ auto CPU::XDETECT(r64& rd) -> void {
     detect.bit(0x27) = 1;  // XHEXDUMP
     detect.bit(0x28) = 1;  // XPROF
     detect.bit(0x29) = 1;  // XPROFREAD
+    detect.bit(0x2c) = 1;  // XIOCTL
     rd.u64 = detect;
 }
 
@@ -113,3 +114,14 @@ auto CPU::XPROFREAD(cr64& rd, r64& rt) -> void {
         default:     rt.u64 = 0; break;
     }
 }
+
+auto CPU::XIOCTL(u64 code) -> void {
+    if(!system.homebrewMode) return;
+
+    switch(code) {
+        case 0x1: //exit
+            printf("[emux] Ares exit requested by application\n");
+            platform->event(ares::Event::Shutdown);
+            break;
+    }
+}   

@@ -996,6 +996,7 @@ struct CPU : Thread {
   auto XHEXDUMP(cr64& rd, cr64& rt) -> void;
   auto XPROF(cr64& rd, u64 code) -> void;
   auto XPROFREAD(cr64& rd, r64& rt) -> void;
+  auto XIOCTL(u64 code) -> void;
 };
 
 extern CPU cpu;
