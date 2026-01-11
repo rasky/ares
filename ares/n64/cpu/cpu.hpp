@@ -115,22 +115,14 @@ struct CPU : Thread {
     struct Line;
     auto line(u64 vaddr) -> Line& { return lines[vaddr >> 5 & 0x1ff]; }
 
-    //used by the recompiler to simulate instruction cache fetch timing
-    auto step(u64 vaddr, u32 paddr) -> void {
-      auto& line = this->line(vaddr);
-      if(!line.hit(paddr)) {
-        self.step(48 * 2);
-        line.valid = 1;
-        line.tag   = paddr & ~0x0000'0fff;
-      } else {
-        self.step(1 * 2);
-      }
-    }
-
+    //call by recompiled blocks to prefetch instructions into the cache
     auto jitFetch(u64 vaddr, u32 paddr, CPU& cpu) -> void {
       auto& line = this->line(vaddr);
       if(!line.hit(paddr)) {
+        self.profile.icacheMisses++;
         line.fill(paddr, cpu);
+      } else {
+        self.profile.icacheHits++;
       }
     }
 
@@ -138,7 +130,10 @@ struct CPU : Thread {
     auto fetch(u64 vaddr, u32 paddr, CPU& cpu) -> u32 {
       auto& line = this->line(vaddr);
       if(!line.hit(paddr)) {
+        self.profile.icacheMisses++;
         line.fill(paddr, cpu);
+      } else {
+        self.profile.icacheHits++;
       }
       return line.read(paddr);
     }
@@ -191,6 +186,7 @@ struct CPU : Thread {
 
   //dcache.cpp
   struct DataCache {
+    CPU& self;
     struct Line;
     auto line(u64 vaddr) -> Line&;
     template<u32 Size> auto read(u64 vaddr, u32 paddr) -> u64;
@@ -220,7 +216,7 @@ struct CPU : Thread {
         u32 words[4];
       };
     } lines[512];
-  } dcache;
+  } dcache{*this};
 
   //tlb.cpp: Translation Lookaside Buffer
   struct TLB {
@@ -981,8 +977,10 @@ struct CPU : Thread {
     struct {
       i64 cpuCycles;
       i64 cpuCyclesExc;
+      i64 icacheHits, icacheMisses, icacheWritebacks;
+      i64 dcacheHits, dcacheMisses, dcacheWritebacks;
     };
-    i64 data[2];
+    i64 data[8];
     Profile() : data{0} {}
   } profile;
 

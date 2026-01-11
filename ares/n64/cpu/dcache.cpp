@@ -50,10 +50,15 @@ template<u32 Size>
 auto CPU::DataCache::read(u64 vaddr, u32 paddr) -> u64 {
   auto& line = this->line(vaddr);
   if(!line.hit(paddr)) {
-    if(line.valid && line.dirty) line.writeBack();
+    if(line.valid && line.dirty) {
+      line.writeBack();
+      self.profile.dcacheWritebacks++;
+    }
     line.fill(paddr);
+    self.profile.dcacheMisses++;
   } else {
     cpu.step(1 * 2);
+    self.profile.dcacheHits++;
   }
   return line.read<Size>(paddr);
 }
@@ -74,10 +79,15 @@ template<u32 Size>
 auto CPU::DataCache::write(u64 vaddr, u32 paddr, u64 data) -> void {
   auto& line = this->line(vaddr);
   if(!line.hit(paddr)) {
-    if(line.valid && line.dirty) line.writeBack();
+    if(line.valid && line.dirty) {
+      line.writeBack();
+      self.profile.dcacheWritebacks++;
+    }
     line.fill(paddr);
+    self.profile.dcacheMisses++;
   } else {
     cpu.step(1 * 2);
+    self.profile.dcacheHits++;
   }
   line.write<Size>(paddr, data);
 }
