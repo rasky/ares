@@ -1169,6 +1169,18 @@ auto CPU::Recompiler::emitSCC(u32 instruction) -> bool {
     return 0;
   }
 
+  //XPROF
+  case 0x28: {
+    callf(&CPU::XPROF, mem(XRd), imm(XCODE));
+    return 0;
+  }
+
+  //XPROFREAD
+  case 0x29: {
+    callf(&CPU::XPROFREAD, mem(XRd), mem(XRt));
+    return 0;
+  }
+
   }
 
   return 0;

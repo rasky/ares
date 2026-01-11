@@ -227,6 +227,8 @@ auto CPU::decoderSCC(u32 instruction) -> void {
   op(0x20, XDETECT, XRD);
   op(0x25, XLOG, XRD, XRT);
   op(0x27, XHEXDUMP, XRD, XRT);
+  op(0x28, XPROF, XRD, XCODE);
+  op(0x29, XPROFREAD, XRD, XRT);
   }
 
   //undefined instructions do not throw a reserved instruction exception

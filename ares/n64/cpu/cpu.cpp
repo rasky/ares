@@ -89,6 +89,8 @@ auto CPU::synchronize() -> void {
     scc.cause.interruptPending.bit(Interrupt::Timer) = 1;
   }
   scc.count += clocks;
+  profile.cpuCycles += clocks;
+  if (scc.status.exceptionLevel) profile.cpuCyclesExc += clocks;
 }
 
 auto CPU::instruction() -> void {

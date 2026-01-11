@@ -977,9 +977,27 @@ struct CPU : Thread {
   } devirtualizeCache;
 
   //emux.cpp
+  union Profile {
+    struct {
+      i64 cpuCycles;
+      i64 cpuCyclesExc;
+    };
+    i64 data[2];
+    Profile() : data{0} {}
+  } profile;
+
+  struct ProfileSlot {
+    Profile profile;
+    n1 started = 0;
+  };
+
+  std::vector<ProfileSlot> profileSlots;
+
   auto XDETECT(r64& rd) -> void;
   auto XLOG(cr64& rd, cr64& rt) -> void;
   auto XHEXDUMP(cr64& rd, cr64& rt) -> void;
+  auto XPROF(cr64& rd, u64 code) -> void;
+  auto XPROFREAD(cr64& rd, r64& rt) -> void;
 };
 
 extern CPU cpu;

@@ -1,11 +1,14 @@
 // emux - emulator extensions for homebrew developers
 
 auto CPU::XDETECT(r64& rd) -> void {
+    printf("XDETECT called rd=%ld\n", &rd - &cpu.ipu.r[0]);
     if(!system.homebrewMode) return;
     n64 detect = 0;
     detect.bit(0x20) = 1;  // XDETECT
     detect.bit(0x25) = 1;  // XLOG
     detect.bit(0x27) = 1;  // XHEXDUMP
+    detect.bit(0x28) = 1;  // XPROF
+    detect.bit(0x29) = 1;  // XPROFREAD
     rd.u64 = detect;
 }
 
@@ -55,4 +58,54 @@ auto CPU::XHEXDUMP(cr64& rd, cr64& rt) -> void {
     }
 
     emux->notify(dump);
+}
+
+auto CPU::XPROF(cr64& rd, u64 code) -> void {
+    if(!system.homebrewMode) return;
+
+    if(code == 4) {  //reset profiling data
+        profileSlots.clear();
+        return;
+    }
+
+    u64 slot = rd.u64;
+    if (slot >= 1024) return;
+    if(profileSlots.size() <= slot) {
+        profileSlots.resize(slot + 1);
+    }
+
+    if(code == 1) { //start profiling
+        for (int i=0; i<sizeof(profile.data)/sizeof(profile.data[0]); i++) {
+            profileSlots[slot].profile.data[i] -= profile.data[i];
+        }
+        profileSlots[slot].started = 1;
+    }
+    if(code == 2) { //stop profiling
+        for (int i=0; i<sizeof(profile.data)/sizeof(profile.data[0]); i++) {
+            profileSlots[slot].profile.data[i] += profile.data[i];
+            printf("  prof[%d] = %lld\n", i, profileSlots[slot].profile.data[i]);
+        }
+        profileSlots[slot].started = 0;
+    }
+    if(code == 3) { //clear profiling data
+        profileSlots[slot] = {};
+    }
+}
+
+auto CPU::XPROFREAD(cr64& rd, r64& rt) -> void {
+    if(!system.homebrewMode) return;
+
+    u64 slot = rd.u64;
+    if (slot >= profileSlots.size()) {
+        rt.u64 = 0;
+        return;
+    }
+    auto& prof = profileSlots[slot].profile;
+
+    u64 code = rt.u64;
+    switch(code) {
+        case 0x0000: rt.u64 = prof.cpuCycles; break;
+        case 0x0001: rt.u64 = prof.cpuCyclesExc; break;
+        default:     rt.u64 = 0; break;
+    }
 }
