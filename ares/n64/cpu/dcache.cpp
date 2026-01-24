@@ -70,7 +70,7 @@ auto CPU::DataCache::readDebug(u64 vaddr, u32 paddr) -> u64 {
   auto& line = this->line(vaddr);
   if(!line.hit(paddr)) {
     Thread dummyThread{};
-    return bus.read<Size>(paddr, dummyThread, "Ares Debugger");
+    return bus.read<Size>(paddr, dummyThread, RBusDevice::ARES_DEBUGGER);
   }
   return line.read<Size>(paddr);
 }
@@ -99,7 +99,7 @@ auto CPU::DataCache::writeDebug(u64 vaddr, u32 paddr, u64 data) -> void {
   auto& line = this->line(vaddr);
   if(!line.hit(paddr)) {
     Thread dummyThread{};
-    return bus.write<Size>(paddr, data, dummyThread, "Ares Debugger");
+    return bus.write<Size>(paddr, data, dummyThread, RBusDevice::ARES_DEBUGGER);
   }
   line.write<Size>(paddr, data);
 }
