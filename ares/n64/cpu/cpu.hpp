@@ -985,8 +985,11 @@ struct CPU : Thread {
   } profile;
 
   struct ProfileSlot {
-    Profile profile;
+    Profile cpu;
+    RDRAM::Profile rdram;
     n1 started = 0;
+
+    static auto global() -> ProfileSlot;
   };
 
   std::vector<ProfileSlot> profileSlots;

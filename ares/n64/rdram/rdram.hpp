@@ -13,7 +13,7 @@ struct RDRAM : Memory::RCP<RDRAM> {
       if (address >= size) return 0;
       if (unlikely(system.homebrewMode)) {
         self.debugger.readWord(address, Size, device);
-        self.profiler.metrics[(u32)device].reads += Size;
+        self.profile.metrics[(u32)device].reads += Size;
       }
       return Memory::Writable::read<Size>(address);
     }
@@ -86,12 +86,12 @@ struct RDRAM : Memory::RCP<RDRAM> {
         u32 len = mi.initializeLength() + 1;
         writeRepeat<Size>(address, value, len);
         if(unlikely(system.homebrewMode)) {
-          self.profiler.metrics[(u32)device].writes += len;
+          self.profile.metrics[(u32)device].writes += len;
         }
       } else {
         Memory::Writable::write<Size>(address, value);
         if(unlikely(system.homebrewMode)) {
-          self.profiler.metrics[(u32)device].writes += Size;
+          self.profile.metrics[(u32)device].writes += Size;
         }
       }
     }
@@ -100,7 +100,7 @@ struct RDRAM : Memory::RCP<RDRAM> {
     auto writeBurst(u32 address, u32 *value, RBusDevice device) -> void {
       if (address >= size) return;
       if (unlikely(system.homebrewMode)) {
-        self.profiler.metrics[(u32)device].writes += Size;
+        self.profile.metrics[(u32)device].writes += Size;
       }
       Memory::Writable::write<Word>(address | 0x00, value[0]);
       Memory::Writable::write<Word>(address | 0x04, value[1]);
@@ -123,7 +123,7 @@ struct RDRAM : Memory::RCP<RDRAM> {
         return;
       }
       if (unlikely(system.homebrewMode)) {
-        self.profiler.metrics[(u32)device].reads += Size;
+        self.profile.metrics[(u32)device].reads += Size;
       }
       value[0] = Memory::Writable::read<Word>(address | 0x00);
       value[1] = Memory::Writable::read<Word>(address | 0x04);
@@ -185,7 +185,7 @@ struct RDRAM : Memory::RCP<RDRAM> {
     auto total() const -> u64 { return reads + writes; }
   };
   
-  struct Profiler {
+  struct Profile {
     Metric metrics[(u32)RBusDevice::NUM_RBUS_DEVICES];
 
     auto total() -> Metric {
@@ -196,7 +196,7 @@ struct RDRAM : Memory::RCP<RDRAM> {
       }
       return total;
     }
-  } profiler;
+  } profile;
 
   auto load(Node::Object) -> void;
   auto unload() -> void;
