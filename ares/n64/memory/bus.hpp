@@ -111,16 +111,16 @@ inline auto Bus::writeBurst(u32 address, u32 *data, Thread& thread) -> void {
 }
 
 inline auto Bus::freezeUnmapped(u32 address) -> void {
-  debug(unusual, "[Bus::freezeUnmapped] CPU frozen because of access to RCP unmapped area: 0x", hex(address, 8L));
+  debug(unusual, "[Bus::freezeUnmapped] CPU frozen because of access to RCP unmapped area: 0x", hex(address, 8L), " (PC: ", hex(cpu.ipu.pc, 8L), ")");
   cpu.scc.sysadFrozen = true;
 }
 
 inline auto Bus::freezeUncached(u32 address) -> void {
-  debug(unusual, "[Bus::freezeUncached] CPU frozen because of cached access to non-RDRAM area: 0x", hex(address, 8L));
+  debug(unusual, "[Bus::freezeUncached] CPU frozen because of cached access to non-RDRAM area: 0x", hex(address, 8L), " (PC: ", hex(cpu.ipu.pc, 8L), ")");
   cpu.scc.sysadFrozen = true;
 }
 
 inline auto Bus::freezeDualRead(u32 address) -> void {
-  debug(unusual, "[Bus::freezeDualRead] CPU frozen because of 64-bit read from non-RDRAM area: 0x ", hex(address, 8L));
+  debug(unusual, "[Bus::freezeDualRead] CPU frozen because of 64-bit read from non-RDRAM area: 0x ", hex(address, 8L), " (PC: ", hex(cpu.ipu.pc, 8L), ")");
   cpu.scc.sysadFrozen = true;
 }
