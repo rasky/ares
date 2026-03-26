@@ -302,8 +302,8 @@ struct CPU : Thread {
   }
   template<u32 Size> auto busWrite(u32 address, u64 data) -> void;
   template<u32 Size> auto busRead(u32 address) -> u64;
-  template<u32 Size> auto busWriteBurst(u32 address, u32 *data) -> void;
-  template<u32 Size> auto busReadBurst(u32 address, u32 *data) -> void;
+  template<u32 Size> auto busWriteBurst(u32 address, u32 *data) -> bool;
+  template<u32 Size> auto busReadBurst(u32 address, u32 *data) -> bool;
   template<u32 Size> auto read(PhysAccess access) -> maybe<u64>;
   template<u32 Size> auto write(PhysAccess access, u64 data) -> bool;
   template<u32 Size> auto read(u64 vaddr) -> maybe<u64> {
@@ -314,6 +314,7 @@ struct CPU : Thread {
   }
   template<u32 Size> auto vaddrAlignedError(u64 vaddr, bool write) -> bool;
   auto addressException(u64 vaddr) -> void;
+  auto emuxException(u8 kind) -> void;
 
   template <u32 Size> auto readDebug(u64 vaddr) -> u64;
   template <u32 Size> auto writeDebug(u64 vaddr, u64 data) -> bool;
@@ -349,6 +350,7 @@ struct CPU : Thread {
     auto coprocessor3() -> void;
     auto arithmeticOverflow() -> void;
     auto trap() -> void;
+    auto emux() -> void;
     auto floatingPoint() -> void;
     auto watchAddress() -> void;
     auto nmi() -> void;

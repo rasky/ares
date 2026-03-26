@@ -4,11 +4,10 @@ auto CPU::DataCache::Line::hit(u32 paddr) const -> bool {
 
 auto CPU::DataCache::Line::fill(u32 paddr) -> void {
   cpu.step(40 * 2);
-  valid  = 1;
   dirty  = 0;
   tag    = paddr & ~0x0000'0fff;
   fillPc = cpu.ipu.pc;
-  cpu.busReadBurst<DCache>(tag | index, words);
+  valid  = cpu.busReadBurst<DCache>(tag | index, words);
 }
 
 auto CPU::DataCache::Line::writeBack() -> void {
