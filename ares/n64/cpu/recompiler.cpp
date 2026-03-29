@@ -1159,7 +1159,7 @@ auto CPU::Recompiler::emitSCC(u32 instruction) -> bool {
 
   //XLOG
   case 0x25: {
-    callf(&CPU::XLOG, mem(XRd), mem(XRt));
+    callf(&CPU::XLOG, mem(XRd), mem(XRt), imm(XCODE));
     return 0;
   }
 

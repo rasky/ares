@@ -25,22 +25,25 @@ auto CPU::XDETECT(r64& rd, u64 code) -> void {
   }
 }
 
-auto CPU::XLOG(cr64& rd, cr64& rt) -> void {
+auto CPU::XLOG(cr64& rd, cr64& rt, u64 code) -> void {
     if(!system.homebrewMode) return;
 
     auto& emux = debugger.tracer.emux;
     u64 vaddr = rd.u64;
-    if (rt.u64 == 0) {
+    switch (code) {
+    case 0x00:
         while (1) {
             char ch = readDebug<Byte>(vaddr++);
             if(!ch) break;
             emux->notify(ch);
-        }        
-    } else {
+        }
+        break;
+    case 0x01:
         for(u64 n = 0; n < rt.u64; n++) {
             char ch = readDebug<Byte>(vaddr++);
             emux->notify(ch);
         }
+        break;
     }
 }
 

@@ -1001,7 +1001,7 @@ struct CPU : Thread {
   } emuxState;
 
   auto XDETECT(r64& rd, u64 code) -> void;
-  auto XLOG(cr64& rd, cr64& rt) -> void;
+  auto XLOG(cr64& rd, cr64& rt, u64 code) -> void;
   auto XHEXDUMP(cr64& rd, cr64& rt) -> void;
   auto XPROF(cr64& rd, u64 code) -> void;
   auto XPROFREAD(cr64& rd, r64& rt) -> void;
