@@ -52,7 +52,6 @@ inline auto Bus::readBurst(u32 address, u32 *data, Thread& thread) -> bool {
     if(address <= 0xc07f'ffff) return aleck64.sdram.readBurst<Size>(address, data, device), true;
   }
 
-  printf("readBurst freezeUncached: 0x%08x\n", address);
   return freezeUncached(address), false;
 }
 
@@ -108,14 +107,13 @@ inline auto Bus::writeBurst(u32 address, u32 *data, Thread& thread) -> bool {
     if(address <= 0xc07f'ffff) return aleck64.sdram.writeBurst<Size>(address, data, device), true;
   }
 
-  printf("writeBurst freezeUncached: 0x%08x\n", address);
   return freezeUncached(address), false;
 }
 
 inline auto Bus::freezeUnmapped(u32 address) -> void {
   debug(unusual, "[Bus::freezeUnmapped] CPU frozen because of access to RCP unmapped area: 0x", hex(address, 8L), " (PC: ", hex(cpu.ipu.pc, 8L), ")");
-  if(system.homebrewMode) {
-    cpu.emuxException(2);
+  if(system.homebrewMode && cpu.emuxState.excMask.bit(3)) {
+    cpu.emuxException(3);
     cpu.exception.emux();
     return;
   }
@@ -124,8 +122,8 @@ inline auto Bus::freezeUnmapped(u32 address) -> void {
 
 inline auto Bus::freezeUncached(u32 address) -> void {
   debug(unusual, "[Bus::freezeUncached] CPU frozen because of cached access to non-RDRAM area: 0x", hex(address, 8L), " (PC: ", hex(cpu.ipu.pc, 8L), ")");
-  if(system.homebrewMode) {
-    cpu.emuxException(0);
+  if(system.homebrewMode && cpu.emuxState.excMask.bit(1)) {
+    cpu.emuxException(1);
     cpu.exception.emux();
     return;
   }
@@ -134,8 +132,8 @@ inline auto Bus::freezeUncached(u32 address) -> void {
 
 inline auto Bus::freezeDualRead(u32 address) -> void {
   debug(unusual, "[Bus::freezeDualRead] CPU frozen because of 64-bit read from non-RDRAM area: 0x ", hex(address, 8L), " (PC: ", hex(cpu.ipu.pc, 8L), ")");
-  if(system.homebrewMode) {
-    cpu.emuxException(1);
+  if(system.homebrewMode && cpu.emuxState.excMask.bit(2)) {
+    cpu.emuxException(2);
     cpu.exception.emux();
     return;
   }

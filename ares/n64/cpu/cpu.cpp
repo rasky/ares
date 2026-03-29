@@ -163,6 +163,7 @@ auto CPU::power(bool reset) -> void {
   for(auto& r : fpu.r) r.u64 = 0;
   fpu.csr = {};
   cop2 = {};
+  emuxState = {};
   fenv.setRound(float_env::toNearest);
   context.setMode();
 

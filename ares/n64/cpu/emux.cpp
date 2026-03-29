@@ -8,7 +8,7 @@ auto CPU::ProfileSlot::global() -> ProfileSlot
   return p;
 }
 
-auto CPU::XDETECT(r64& rd) -> void {
+auto CPU::XDETECT(r64& rd, u64 code) -> void {
   if(!system.homebrewMode) return;
   n64 detect = 0;
   detect.bit(0x20) = 1;  // XDETECT
@@ -16,8 +16,13 @@ auto CPU::XDETECT(r64& rd) -> void {
   detect.bit(0x27) = 1;  // XHEXDUMP
   detect.bit(0x28) = 1;  // XPROF
   detect.bit(0x29) = 1;  // XPROFREAD
+  detect.bit(0x2a) = 1;  // XEXCEPTION
   detect.bit(0x2c) = 1;  // XIOCTL
-  rd.u64 = detect;
+  switch(code) {
+  case 0x00: rd.s64 = (s32)detect.bit(0x00, 0x1F); break;
+  case 0x01: rd.s64 = (s32)detect.bit(0x20, 0x3F); break;
+  default:   rd.s64 = 0; break;
+  }
 }
 
 auto CPU::XLOG(cr64& rd, cr64& rt) -> void {
@@ -177,4 +182,9 @@ auto CPU::XIOCTL(u64 code) -> void {
       platform->event(ares::Event::Shutdown);
       break;
   }
+}
+
+auto CPU::XEXCEPTION(r64& rt) -> void {
+  if(!system.homebrewMode) return;
+  emuxState.excMask = rt.u64;
 }

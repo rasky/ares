@@ -1153,7 +1153,7 @@ auto CPU::Recompiler::emitSCC(u32 instruction) -> bool {
 
   //XDETECT
   case 0x20: {
-    callf(&CPU::XDETECT, mem(XRd));
+    callf(&CPU::XDETECT, mem(XRd), imm(XCODE));
     return 0;
   }
 
@@ -1178,6 +1178,12 @@ auto CPU::Recompiler::emitSCC(u32 instruction) -> bool {
   //XPROFREAD
   case 0x29: {
     callf(&CPU::XPROFREAD, mem(XRd), mem(XRt));
+    return 0;
+  }
+
+  //XEXCEPTION
+  case 0x2a: {
+    callf(&CPU::XEXCEPTION, mem(XRt));
     return 0;
   }
 

@@ -996,11 +996,16 @@ struct CPU : Thread {
 
   std::vector<ProfileSlot> profileSlots;
 
-  auto XDETECT(r64& rd) -> void;
+  struct EmuxState {
+    n64 excMask;
+  } emuxState;
+
+  auto XDETECT(r64& rd, u64 code) -> void;
   auto XLOG(cr64& rd, cr64& rt) -> void;
   auto XHEXDUMP(cr64& rd, cr64& rt) -> void;
   auto XPROF(cr64& rd, u64 code) -> void;
   auto XPROFREAD(cr64& rd, r64& rt) -> void;
+  auto XEXCEPTION(r64& rt) -> void;
   auto XIOCTL(u64 code) -> void;
 };
 
