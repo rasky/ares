@@ -220,7 +220,7 @@ auto CPU::addressException(u64 vaddr) -> void {
 }
 
 auto CPU::emuxException(u8 kind) -> void {
-  scc.parityError.diagnostic = kind;
+  scc.cacheError.unused = kind;
 }
 
 template auto CPU::writeDebug<Byte>(u64, u64) -> bool;

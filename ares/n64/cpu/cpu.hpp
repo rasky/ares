@@ -639,6 +639,11 @@ struct CPU : Thread {
       n8 diagnostic;  //unused; for R4000 compatibility only
     } parityError;
 
+    //27
+    struct CacheError {
+      n32 unused;     //unused; for R4000 compatibility only
+    } cacheError;
+
     //28
     struct TagLo {
       n2  primaryCacheState;
