@@ -2,7 +2,8 @@ inline auto PI::readWord(u32 address, Thread& thread) -> u32 {
   if(address <= 0x046f'ffff) return ioRead(address);
 
   if (unlikely(io.ioBusy)) {
-    debug(unusual, "[PI::readWord] PI read to 0x", hex(address, 8L), " will not behave as expected because PI writing is in progress");
+    debug(unusual, "[PI::readWord] PI read to 0x", hex(address, 8L),
+      " will not behave as expected because PI writing is in progress");
     thread.step(writeForceFinish() * 2);
     return io.busLatch;
   }
@@ -43,6 +44,14 @@ inline auto PI::busRead(u32 address) -> u32 {
   if(address <= 0x0fff'ffff) {
     if(cartridge.ram  ) return cartridge.ram.read<Size>(address);
     if(cartridge.flash) return cartridge.flash.read<Size>(address);
+    return unmapped;
+  }
+  if(devkit.enabled && address >= 0x1ff0'8000 && address <= 0x1ff0'801f) {
+    return devkit.partner.readWord(address);
+  }
+  if(!devkit.enabled && address >= 0x1ff0'8000 && address <= 0x1ff0'801f) {
+    debug(unusual, "[Devkit] access to Partner-N64 range 0x", hex(address, 8L),
+      " while Devkit Emulation is disabled. Enable Devkit Emulation and retry.");
     return unmapped;
   }
   if(cartridge.isviewer.enabled() && address >= 0x13ff'0000 && address <= 0x13ff'ffff) {
@@ -94,6 +103,14 @@ inline auto PI::busWrite(u32 address, u32 data) -> void {
   if(address <= 0x0fff'ffff) {
     if(cartridge.ram  ) return cartridge.ram.write<Size>(address, data);
     if(cartridge.flash) return cartridge.flash.write<Size>(address, data);
+    return;
+  }
+  if(devkit.enabled && address >= 0x1ff0'8000 && address <= 0x1ff0'801f) {
+    return devkit.partner.writeWord(address, data);
+  }
+  if(!devkit.enabled && address >= 0x1ff0'8000 && address <= 0x1ff0'801f) {
+    debug(unusual, "[Devkit] access to Partner-N64 range 0x", hex(address, 8L),
+      " while Devkit Emulation is disabled. Enable Devkit Emulation and retry.");
     return;
   }
   if(address >= 0x13ff'0000 && address <= 0x13ff'ffff) {

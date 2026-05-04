@@ -20,6 +20,12 @@ inline auto Bus::read(u32 address, Thread& thread, RBusDevice device) -> u64 {
   if(address <= 0x1fbf'ffff) return pi.read<Size>(address, thread);
   if(address <= 0x1fcf'ffff) return si.read<Size>(address, thread);
   if(address <= 0x7fff'ffff) return pi.read<Size>(address, thread);
+  if(devkit.enabled && address <= 0x8000'000f) return devkit.rdb.read<Size>(address);
+  if(!devkit.enabled && address <= 0x8000'000f) {
+    debug(unusual, "[Devkit] access to RDB range 0x", hex(address, 8L),
+      " while Devkit Emulation is disabled. Enable Devkit Emulation and retry.");
+    return freezeUnmapped(address), 0;
+  }
   if(Model::Aleck64())       return aleck64.read<Size>(address, thread);
   return freezeUnmapped(address), 0;
 }
@@ -80,6 +86,12 @@ inline auto Bus::write(u32 address, u64 data, Thread& thread, RBusDevice device)
   if(address <= 0x1fbf'ffff) return pi.write<Size>(address, data, thread);
   if(address <= 0x1fcf'ffff) return si.write<Size>(address, data, thread);
   if(address <= 0x7fff'ffff) return pi.write<Size>(address, data, thread);
+  if(devkit.enabled && address <= 0x8000'000f) return devkit.rdb.write<Size>(address, data);
+  if(!devkit.enabled && address <= 0x8000'000f) {
+    debug(unusual, "[Devkit] access to RDB range 0x", hex(address, 8L),
+      " while Devkit Emulation is disabled. Enable Devkit Emulation and retry.");
+    return freezeUnmapped(address);
+  }
   if(Model::Aleck64())       return aleck64.write<Size>(address, data, thread);
   return freezeUnmapped(address);
 }
@@ -139,3 +151,4 @@ inline auto Bus::freezeDualRead(u32 address) -> void {
   }
   cpu.scc.sysadFrozen = true;
 }
+

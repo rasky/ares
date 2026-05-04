@@ -130,6 +130,7 @@ namespace ares::Nintendo64 {
   #include <n64/cic/cic.hpp>
   #include <n64/controller/controller.hpp>
   #include <n64/dd/dd.hpp>
+  #include <n64/devkit/devkit.hpp>
   #include <n64/aleck64/aleck64.hpp>
   #include <n64/mi/mi.hpp>
   #include <n64/vi/vi.hpp>

@@ -31,6 +31,7 @@ auto Nintendo64DD::load(string location) -> LoadResult {
   pak = std::make_shared<vfs::directory>();
   pak->setAttribute("title", document["game/title"].string());
   pak->setAttribute("region", document["game/region"].string());
+  pak->setAttribute("location", location);
   pak->append("manifest.bml", manifest);
   pak->append("program.disk.error", errorTable);
 

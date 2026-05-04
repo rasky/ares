@@ -51,6 +51,14 @@ auto OptionSettings::construct() -> void {
   nintendo64ExpansionPakLayout.setAlignment(1).setPadding(12_sx, 0);
     nintendo64ExpansionPakHint.setText("Enable/Disable the 4MB Expansion Pak").setFont(Font().setSize(7.0)).setForegroundColor(SystemColor::Sublabel);
 
+  nintendo64DevkitEmulationOption.setText("N64 Devkit Emulation")
+    .setChecked(settings.nintendo64.devkitEmulation).onToggle([&] {
+    settings.nintendo64.devkitEmulation = nintendo64DevkitEmulationOption.checked();
+  });
+  nintendo64DevkitEmulationLayout.setAlignment(1).setPadding(12_sx, 0);
+    nintendo64DevkitEmulationHint.setText("Enable RDB and Partner-N64 development channels")
+      .setFont(Font().setSize(7.0)).setForegroundColor(SystemColor::Sublabel);
+
   for(auto& opt : array<string[4]>{"32KiB (Default)", "128KiB (Datel 1Meg)", "512KiB (Datel 4Meg)", "1984KiB (Maximum)"}) {
     ComboButtonItem item{&nintendo64ControllerPakBankOption};
     item.setText(opt);

@@ -35,6 +35,11 @@ auto option(string name, string value) -> bool {
   vulkan.outputUpscale = vulkan.supersampleScanout ? 1 : vulkan.internalUpscale;
   #endif
   if(name == "Homebrew Mode") system.homebrewMode = value.boolean();
+  if(name == "Devkit Emulation") {
+    devkit.enabled = value.boolean();
+    devkit.debugger.setEnabled(devkit.enabled);
+    devkit.power(false);
+  }
   if(name == "Recompiler") {
     if constexpr(Accuracy::CPU::Recompiler) {
       cpu.recompiler.enabled = value.boolean();
@@ -133,6 +138,7 @@ auto System::load(Node::System& root, string name) -> bool {
   vi.load(node);
   ai.load(node);
   pi.load(node);
+  devkit.load(node);
   pif.load(node);
   ri.load(node);
   si.load(node);
@@ -399,6 +405,7 @@ auto System::unload() -> void {
   vi.unload();
   ai.unload();
   pi.unload();
+  devkit.unload();
   pif.unload();
   ri.unload();
   si.unload();
@@ -442,6 +449,7 @@ auto System::power(bool reset) -> void {
   #endif
   ai.power(reset);
   pi.power(reset);
+  devkit.power(reset);
   pif.power(reset);
   cic.power(reset);
   ri.power(reset);

@@ -103,6 +103,7 @@ auto Nintendo64::load(string location) -> LoadResult {
   pak->setAttribute("id",     document["game/id"].string());
   pak->setAttribute("title",  document["game/title"].string());
   pak->setAttribute("region", document["game/region"].string());
+  pak->setAttribute("location", location);
   for (int i=0; i<4; i++) {
     pak->setAttribute(string{"port", i + 1, "/cpak"}, (bool)document[{"game/controllers/port", i+1, "/cpak"}]);
     pak->setAttribute(string{"port", i + 1, "/rpak"}, (bool)document[{"game/controllers/port", i+1, "/rpak"}]);

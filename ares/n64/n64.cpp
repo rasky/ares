@@ -6,6 +6,7 @@
 #include <n64/cic/cic.cpp>
 #include <n64/controller/controller.cpp>
 #include <n64/dd/dd.cpp>
+#include <n64/devkit/devkit.cpp>
 #include <n64/mi/mi.cpp>
 #include <n64/vi/vi.cpp>
 #include <n64/ai/ai.cpp>

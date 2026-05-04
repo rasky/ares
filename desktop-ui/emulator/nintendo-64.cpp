@@ -116,6 +116,7 @@ auto Nintendo64::load() -> LoadResult {
   ares::Nintendo64::option("Homebrew Mode", settings.general.homebrewMode);
   ares::Nintendo64::option("Recompiler", !settings.general.forceInterpreter);
   ares::Nintendo64::option("Expansion Pak", settings.nintendo64.expansionPak);
+  ares::Nintendo64::option("Devkit Emulation", settings.nintendo64.devkitEmulation);
   ares::Nintendo64::option("Controller Pak Banks", settings.nintendo64.controllerPakBankString);
 
   if(!ares::Nintendo64::load(root, {"[Nintendo] ", name, " (", region, ")"})) return otherError;

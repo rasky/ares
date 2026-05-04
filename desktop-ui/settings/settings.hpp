@@ -113,6 +113,7 @@ struct Settings : Markup::Node {
 
   struct Nintendo64 {
     bool expansionPak = true;
+    bool devkitEmulation = true;
     u8 controllerPakBankCount = 1;
     string controllerPakBankString = "32KiB (Default)";
   } nintendo64;
@@ -281,6 +282,9 @@ struct OptionSettings : VerticalLayout {
     HorizontalLayout nintendo64ExpansionPakLayout{this, Size{~0, 0}, 5};
       CheckLabel nintendo64ExpansionPakOption{&nintendo64ExpansionPakLayout, Size{0, 0}, 5};
       Label nintendo64ExpansionPakHint{&nintendo64ExpansionPakLayout, Size{0, layoutVertSize}};
+    HorizontalLayout nintendo64DevkitEmulationLayout{this, Size{~0, 0}, 5};
+      CheckLabel nintendo64DevkitEmulationOption{&nintendo64DevkitEmulationLayout, Size{0, 0}, 5};
+      Label nintendo64DevkitEmulationHint{&nintendo64DevkitEmulationLayout, Size{0, layoutVertSize}};
     HorizontalLayout nintendo64ControllerPakBankLayout{this, Size{~0, 0}, 5};
       Label nintendo64ControllerPakBankLabel{&nintendo64ControllerPakBankLayout, Size{0, layoutVertSize}};
       ComboButton nintendo64ControllerPakBankOption{&nintendo64ControllerPakBankLayout, Size{0, 0}};

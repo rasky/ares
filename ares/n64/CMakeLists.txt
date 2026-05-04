@@ -12,6 +12,7 @@ ares_add_sources(
     cic/cic.cpp
     controller/controller.cpp
     dd/dd.cpp
+    devkit/devkit.cpp
     mi/mi.cpp
     vi/vi.cpp
     ai/ai.cpp
@@ -159,6 +160,19 @@ ares_add_sources(
     cpu/recompiler.cpp
     cpu/serialization.cpp
     cpu/tlb.cpp
+)
+
+ares_add_sources(
+  CORE #
+    n64
+  INCLUDED #
+    devkit/debugger.cpp
+    devkit/devkit.hpp
+    devkit/partner.cpp
+    devkit/partner.hpp
+    devkit/rdb.cpp
+    devkit/rdb.hpp
+    devkit/serialization.cpp
 )
 
 ares_add_sources(

@@ -128,6 +128,7 @@ auto Settings::process(bool load) -> void {
   bind(boolean, "DebugServer/UseIPv4", debugServer.useIPv4);
 
   bind(boolean, "Nintendo64/ExpansionPak", nintendo64.expansionPak);
+  bind(boolean, "Nintendo64/DevkitEmulation", nintendo64.devkitEmulation);
   bind(string, "Nintendo64/ControllerPakBankString", nintendo64.controllerPakBankString);
 
   bind(boolean, "GameBoyAdvance/Player", gameBoyAdvance.player);
