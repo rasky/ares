@@ -132,6 +132,13 @@ auto CPU::serialize(serializer& s) -> void {
 
   s(cop2.latch);
 
+  s(emuxState.excMask);
+  s(xasan.refcount);
+  u32 xasanShadowSize = xasan.shadow.size();
+  s(xasanShadowSize);
+  if(s.reading()) xasan.shadow.resize(xasanShadowSize);
+  for(auto& byte : xasan.shadow) s(byte);
+
   if constexpr(Accuracy::CPU::Recompiler) {
     recompiler.reset();
   }

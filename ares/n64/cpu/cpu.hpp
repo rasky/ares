@@ -361,7 +361,7 @@ struct CPU : Thread {
   }
   template<u32 Size> auto vaddrAlignedError(u64 vaddr, bool write) -> bool;
   auto addressException(u64 vaddr) -> void;
-  auto emuxException(u8 kind) -> void;
+  auto emuxException(u32 kind) -> void;
 
   template <u32 Size> auto readDebug(u64 vaddr) -> u64;
   template <u32 Size> auto writeDebug(u64 vaddr, u64 data) -> bool;
@@ -1058,6 +1058,9 @@ struct CPU : Thread {
       auto watchpointsActive() const -> bool { return data.bit(25); }
       auto setWatchpointsActive(bool value) -> void { data.bit(25) = value; }
 
+      auto xasanActive() const -> bool { return data.bit(26); }
+      auto setXasanActive(bool value) -> void { data.bit(26) = value; }
+
       n64 data = 0;
     };
 
@@ -1291,6 +1294,48 @@ struct CPU : Thread {
     n64 excMask;
   } emuxState;
 
+  struct Xasan {
+    enum : u8 {
+      Accessible = 0x00,
+      LeftRedzone  = 0xf1,
+      RightRedzone = 0xf2,
+      Freed        = 0xf3,
+      GlobalRedzone = 0xf4,
+      UserPoisoned = 0xf5,
+      Unallocated  = 0xf6,
+    };
+
+    static constexpr u32 RdramSize = 8_MiB;
+    static constexpr u32 Granule = 8;
+    static constexpr u32 ExceptionMaskBit = 4;  //emuxState.excMask bit gating the guest-visible XASAN exception
+
+    s32 refcount = 0;
+    std::vector<u8> shadow;
+
+    auto active() const -> bool { return refcount > 0 && !shadow.empty(); }
+
+    auto poison(u32 paddr, u32 size, u8 tag) -> void {
+      if(shadow.empty() || !size) return;
+      u32 first = paddr / Granule;
+      u32 last  = (paddr + size - 1) / Granule;
+      for(u32 g = first; g <= last && g < shadow.size(); g++) shadow[g] = tag;
+    }
+
+    auto unpoison(u32 paddr, u32 size) -> void {
+      poison(paddr, size, Accessible);
+    }
+
+    auto check(u32 paddr, u32 size) const -> u8 {
+      if(shadow.empty() || !size) return Accessible;
+      u32 first = paddr / Granule;
+      u32 last  = (paddr + size - 1) / Granule;
+      for(u32 g = first; g <= last && g < shadow.size(); g++) {
+        if(shadow[g] != Accessible) return shadow[g];
+      }
+      return Accessible;
+    }
+  } xasan;
+
   auto XDETECT(r64& rd, u64 code) -> void;
   auto XLOG(cr64& rd, cr64& rt, u64 code) -> void;
   auto XHEXDUMP(cr64& rd, cr64& rt) -> void;
@@ -1298,6 +1343,8 @@ struct CPU : Thread {
   auto XPROFREAD(cr64& rd, r64& rt) -> void;
   auto XEXCEPTION(r64& rt) -> void;
   auto XIOCTL(u64 code) -> void;
+  auto XASAN(cr64& rd, cr64& rt, u64 code) -> void;
+  auto xasanReport(bool write, u64 vaddr, u32 size, u8 tag) -> void;
 };
 
 extern CPU cpu;

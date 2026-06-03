@@ -230,6 +230,7 @@ auto CPU::decoderSCC(u32 instruction) -> void {
   op(0x28, XPROF, XRD, XCODE);
   op(0x29, XPROFREAD, XRD, XRT);
   op(0x2a, XEXCEPTION, XRT);
+  op(0x2b, XASAN, XRD, XRT, XCODE);
   op(0x2c, XIOCTL, XCODE);
   }
 

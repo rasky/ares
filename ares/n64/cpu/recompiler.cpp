@@ -257,6 +257,7 @@ auto CPU::Recompiler::computeStateKey() const -> u64 {
   stateKey.setSpAligned4((sp & 3) == 0);
   stateKey.setSpAligned8((sp & 7) == 0);
   stateKey.setWatchpointsActive(GDB::server.hasWatchpoints());
+  stateKey.setXasanActive(self.xasan.active());
   return stateKey;
 }
 

@@ -90,7 +90,7 @@ auto CPU::Recompiler::jitMemoryOpcode(u32 instruction, u32 size, u32 mode,
       floatingWordOff += Ftn & 1 ? FpuR64S32hOff : FpuR64S32Off;
     }
   }
-  if(emitSlowPath || emitStateKey.watchpointsActive() || (require64 && reservedInstruction64())
+  if(emitSlowPath || emitStateKey.watchpointsActive() || emitStateKey.xasanActive() || (require64 && reservedInstruction64())
   || (store && size == Dual && (partialLeft || partialRight) && system.homebrewMode)
   || (floating && !emitStateKey.coprocessor1Enabled())) {
     return fallback();
@@ -2235,6 +2235,13 @@ auto CPU::Recompiler::emitSCC(u32 instruction, EmitPcMode pcMode) -> EmitExecute
   case 0x2a: {
     setupCallf();
     callf(&CPU::XEXCEPTION, mem(XRt));
+    return EmitExecuteResult::Linear;
+  }
+
+  //XASAN
+  case 0x2b: {
+    setupCallf();
+    callf(&CPU::XASAN, mem(XRd), mem(XRt), imm(XCODE));
     return EmitExecuteResult::Linear;
   }
 

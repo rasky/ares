@@ -230,6 +230,7 @@ auto CPU::decoderSCCInfo(u32 instruction) const -> OpInfo {
   op(0x28, XPROF);
   op(0x29, XPROFREAD);
   op(0x2a, XEXCEPTION);
+  op(0x2b, XASAN);
   op(0x2c, XIOCTL);
   }
 

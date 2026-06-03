@@ -20,6 +20,7 @@ auto CPU::XDETECT(r64& rd, u64 code) -> void {
   detect.bit(0x28) = 1;  // XPROF
   detect.bit(0x29) = 1;  // XPROFREAD
   detect.bit(0x2a) = 1;  // XEXCEPTION
+  detect.bit(0x2b) = 1;  // XASAN
   detect.bit(0x2c) = 1;  // XIOCTL
   ioctl.bit(0x01) = 1;   // XIOCTL exit
   ioctl.bit(0x02) = 1;   // XIOCTL fast
@@ -212,4 +213,52 @@ auto CPU::XIOCTL(u64 code) -> void {
 auto CPU::XEXCEPTION(r64& rt) -> void {
   if(!system.homebrewMode) return;
   emuxState.excMask = rt.u64;
+}
+
+auto CPU::XASAN(cr64& rd, cr64& rt, u64 code) -> void {
+  if(!system.homebrewMode) return;
+
+  switch(code & 0xf) {
+  case 0x0:  //DISABLE
+    xasan.refcount--;
+    break;
+  case 0x1:  //ENABLE
+    if(xasan.shadow.empty()) xasan.shadow.resize(Xasan::RdramSize / Xasan::Granule, Xasan::Accessible);
+    xasan.refcount++;
+    break;
+  case 0x2: {  //POISON
+    if(xasan.shadow.empty()) xasan.shadow.resize(Xasan::RdramSize / Xasan::Granule, Xasan::Accessible);
+    u8 tagCode = code >> 4 & 0xf;
+    u8 tag = tagCode ? 0xf0 | tagCode : Xasan::UserPoisoned;
+    auto access = devirtualize<Read, Byte>(rd.u64, false, false);
+    if(access && access.paddr < Xasan::RdramSize) xasan.poison(access.paddr, rt.u32, tag);
+    break;
+  }
+  case 0x3: {  //UNPOISON
+    if(xasan.shadow.empty()) xasan.shadow.resize(Xasan::RdramSize / Xasan::Granule, Xasan::Accessible);
+    auto access = devirtualize<Read, Byte>(rd.u64, false, false);
+    if(access && access.paddr < Xasan::RdramSize) xasan.unpoison(access.paddr, rt.u32);
+    break;
+  }
+  }
+}
+
+auto CPU::xasanReport(bool write, u64 vaddr, u32 size, u8 tag) -> void {
+  auto& emux = debugger.tracer.emux;
+  string kind;
+  switch(tag) {
+  case Xasan::LeftRedzone:   kind = "left-redzone"; break;
+  case Xasan::RightRedzone:  kind = "right-redzone"; break;
+  case Xasan::Freed:         kind = "freed"; break;
+  case Xasan::GlobalRedzone: kind = "global-redzone"; break;
+  case Xasan::UserPoisoned:  kind = "user-poisoned"; break;
+  case Xasan::Unallocated:   kind = "unallocated"; break;
+  default:                   kind = "poisoned"; break;
+  }
+  emux->notify(string{
+    "XASAN: invalid ", write ? "write" : "read", "\n",
+    write ? "WRITE" : "READ", " of size ", size, " at 0x", hex(vaddr, 16L), "\n",
+    "PC: 0x", hex(ipu.pc, 16L), "\n",
+    "shadow: ", hex(tag, 2L), " (", kind, ")\n",
+  });
 }
