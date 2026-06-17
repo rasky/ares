@@ -1295,45 +1295,84 @@ struct CPU : Thread {
   } emuxState;
 
   struct Xasan {
-    enum : u8 {
-      Accessible = 0x00,
-      LeftRedzone  = 0xf1,
-      RightRedzone = 0xf2,
-      Freed        = 0xf3,
-      GlobalRedzone = 0xf4,
-      UserPoisoned = 0xf5,
-      Unallocated  = 0xf6,
-    };
-
     static constexpr u32 RdramSize = 8_MiB;
-    static constexpr u32 Granule = 8;
+    static constexpr u32 Granule = 16;
     static constexpr u32 ExceptionMaskBit = 4;  //emuxState.excMask bit gating the guest-visible XASAN exception
 
+    enum : u8 {
+      PermissionCpuRead    = 1 << 0,
+      PermissionCpuWrite   = 1 << 1,
+      PermissionCpuExecute = 1 << 2,
+      PermissionStack      = 1 << 3,
+      PermissionRspDmaRead = 1 << 4,
+      PermissionRspDmaWrite = 1 << 5,
+    };
+
+    enum : u8 {
+      AccessTypeCpuRead = 1,
+      AccessTypeCpuWrite = 2,
+      AccessTypeCpuExecute = 3,
+      AccessTypeStack = 4,
+      AccessTypeRspDmaRead = 5,
+      AccessTypeRspDmaWrite = 6,
+    };
+
+    enum : u8 {
+      FaultClassPermission = 1,
+      FaultClassPoison = 2,
+      FaultClassTail = 3,
+    };
+
+    enum : u8 {
+      PoisonAccessible = 0,
+      PoisonLeftRedzone = 1,
+      PoisonRightRedzone = 2,
+      PoisonFreed = 3,
+      PoisonGlobalRedzone = 4,
+      PoisonUserPoisoned = 5,
+      PoisonUnallocated = 6,
+    };
+
+    struct Fault {
+      u8 poisonType = PoisonAccessible;
+      u8 accessType = 0;
+      u8 faultClass = 0;
+      auto active() const -> bool { return faultClass != 0; }
+    };
+
+    struct ShadowEntry {
+      n16 entry = 0;
+
+      auto permissions() const -> n6 { return entry.bit(0, 5); }
+      auto poisonType() const -> n3 { return entry.bit(6, 8); }
+      auto tailInvalidBytes() const -> n4 { return entry.bit(9,12); }
+
+      auto setPermissions(n6 value) -> void { entry.bit(0, 5) = value; }
+      auto setPoisonType(n3 value) -> void { entry.bit(6, 8) = value; }
+      auto setTailInvalidBytes(n4 value) -> void { entry.bit(9,12) = value; }
+
+      static auto create(n6 permissions, n3 poisonType, n4 tailInvalidBytes) -> ShadowEntry;
+    };
+    static_assert(sizeof(ShadowEntry) == 2);
+
+    static constexpr u8 AllPermissions = (
+      PermissionCpuRead | PermissionCpuWrite | PermissionCpuExecute |
+      PermissionStack | PermissionRspDmaRead | PermissionRspDmaWrite
+    );
+
+    static auto defaultEntry() -> ShadowEntry {
+      return ShadowEntry::create(n6(AllPermissions), PoisonAccessible, 0);
+    }
+
     s32 refcount = 0;
-    std::vector<u8> shadow;
+    std::vector<ShadowEntry> shadow;
 
     auto active() const -> bool { return refcount > 0 && !shadow.empty(); }
-
-    auto poison(u32 paddr, u32 size, u8 tag) -> void {
-      if(shadow.empty() || !size) return;
-      u32 first = paddr / Granule;
-      u32 last  = (paddr + size - 1) / Granule;
-      for(u32 g = first; g <= last && g < shadow.size(); g++) shadow[g] = tag;
-    }
-
-    auto unpoison(u32 paddr, u32 size) -> void {
-      poison(paddr, size, Accessible);
-    }
-
-    auto check(u32 paddr, u32 size) const -> u8 {
-      if(shadow.empty() || !size) return Accessible;
-      u32 first = paddr / Granule;
-      u32 last  = (paddr + size - 1) / Granule;
-      for(u32 g = first; g <= last && g < shadow.size(); g++) {
-        if(shadow[g] != Accessible) return shadow[g];
-      }
-      return Accessible;
-    }
+    auto poison(u32 paddr, u32 size, u8 poisonType) -> void;
+    auto unpoison(u32 paddr, u32 size) -> void;
+    auto check(u32 paddr, u32 size, u8 permissionMask, u8 accessType) const -> Fault;
+    auto checkRead(CPU& self, const PhysAccess& access, u32 size) const -> bool;
+    auto checkWrite(CPU& self, const PhysAccess& access, u32 size) const -> bool;
   } xasan;
 
   auto XDETECT(r64& rd, u64 code) -> void;
@@ -1344,7 +1383,8 @@ struct CPU : Thread {
   auto XEXCEPTION(r64& rt) -> void;
   auto XIOCTL(u64 code) -> void;
   auto XASAN(cr64& rd, cr64& rt, u64 code) -> void;
-  auto xasanReport(bool write, u64 vaddr, u32 size, u8 tag) -> void;
+  auto xasanReport(bool write, u64 vaddr, u32 size, u8 poisonType, u8 accessType, u8 faultClass)
+    -> void;
 };
 
 extern CPU cpu;

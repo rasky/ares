@@ -22,6 +22,7 @@ CPU cpu;
 #include "debugger.cpp"
 #include "serialization.cpp"
 #include "disassembler.cpp"
+#include "emux_asan.cpp"
 #include "emux.cpp"
 
 auto CPU::load(Node::Object parent) -> void {

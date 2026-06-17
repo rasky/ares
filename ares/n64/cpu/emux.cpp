@@ -223,19 +223,19 @@ auto CPU::XASAN(cr64& rd, cr64& rt, u64 code) -> void {
     xasan.refcount--;
     break;
   case 0x1:  //ENABLE
-    if(xasan.shadow.empty()) xasan.shadow.resize(Xasan::RdramSize / Xasan::Granule, Xasan::Accessible);
+    if(xasan.shadow.empty()) xasan.shadow.resize(Xasan::RdramSize / Xasan::Granule, Xasan::defaultEntry());
     xasan.refcount++;
     break;
   case 0x2: {  //POISON
-    if(xasan.shadow.empty()) xasan.shadow.resize(Xasan::RdramSize / Xasan::Granule, Xasan::Accessible);
-    u8 tagCode = code >> 4 & 0xf;
-    u8 tag = tagCode ? 0xf0 | tagCode : Xasan::UserPoisoned;
+    if(xasan.shadow.empty()) xasan.shadow.resize(Xasan::RdramSize / Xasan::Granule, Xasan::defaultEntry());
+    u8 poisonType = code >> 4 & 0xf;
+    if(poisonType > Xasan::PoisonUnallocated) poisonType = Xasan::PoisonUserPoisoned;
     auto access = devirtualize<Read, Byte>(rd.u64, false, false);
-    if(access && access.paddr < Xasan::RdramSize) xasan.poison(access.paddr, rt.u32, tag);
+    if(access && access.paddr < Xasan::RdramSize) xasan.poison(access.paddr, rt.u32, poisonType);
     break;
   }
   case 0x3: {  //UNPOISON
-    if(xasan.shadow.empty()) xasan.shadow.resize(Xasan::RdramSize / Xasan::Granule, Xasan::Accessible);
+    if(xasan.shadow.empty()) xasan.shadow.resize(Xasan::RdramSize / Xasan::Granule, Xasan::defaultEntry());
     auto access = devirtualize<Read, Byte>(rd.u64, false, false);
     if(access && access.paddr < Xasan::RdramSize) xasan.unpoison(access.paddr, rt.u32);
     break;
@@ -243,22 +243,44 @@ auto CPU::XASAN(cr64& rd, cr64& rt, u64 code) -> void {
   }
 }
 
-auto CPU::xasanReport(bool write, u64 vaddr, u32 size, u8 tag) -> void {
+auto CPU::xasanReport(
+  bool write, u64 vaddr, u32 size, u8 poisonType, u8 accessType, u8 faultClass
+) -> void {
   auto& emux = debugger.tracer.emux;
   string kind;
-  switch(tag) {
-  case Xasan::LeftRedzone:   kind = "left-redzone"; break;
-  case Xasan::RightRedzone:  kind = "right-redzone"; break;
-  case Xasan::Freed:         kind = "freed"; break;
-  case Xasan::GlobalRedzone: kind = "global-redzone"; break;
-  case Xasan::UserPoisoned:  kind = "user-poisoned"; break;
-  case Xasan::Unallocated:   kind = "unallocated"; break;
-  default:                   kind = "poisoned"; break;
+  switch(poisonType) {
+  case Xasan::PoisonAccessible:    kind = "accessible"; break;
+  case Xasan::PoisonLeftRedzone:   kind = "left-redzone"; break;
+  case Xasan::PoisonRightRedzone:  kind = "right-redzone"; break;
+  case Xasan::PoisonFreed:         kind = "freed"; break;
+  case Xasan::PoisonGlobalRedzone: kind = "global-redzone"; break;
+  case Xasan::PoisonUserPoisoned:  kind = "user-poisoned"; break;
+  case Xasan::PoisonUnallocated:   kind = "unallocated"; break;
+  default:                         kind = "poisoned"; break;
+  }
+  string access;
+  switch(accessType) {
+  case Xasan::AccessTypeCpuRead:      access = "CPU Read"; break;
+  case Xasan::AccessTypeCpuWrite:     access = "CPU Write"; break;
+  case Xasan::AccessTypeCpuExecute:   access = "CPU Exec"; break;
+  case Xasan::AccessTypeStack:        access = "Stack access"; break;
+  case Xasan::AccessTypeRspDmaRead:   access = "RSP DMA Read"; break;
+  case Xasan::AccessTypeRspDmaWrite:  access = "RSP DMA Write"; break;
+  default:                            access = write ? "CPU Write" : "CPU Read"; break;
+  }
+  string fault;
+  switch(faultClass) {
+  case Xasan::FaultClassPermission:   fault = "permission"; break;
+  case Xasan::FaultClassPoison:       fault = "poison"; break;
+  case Xasan::FaultClassTail:         fault = "tail"; break;
+  default:                            fault = "unknown"; break;
   }
   emux->notify(string{
     "XASAN: invalid ", write ? "write" : "read", "\n",
     write ? "WRITE" : "READ", " of size ", size, " at 0x", hex(vaddr, 16L), "\n",
+    "access: ", access, "\n",
+    "fault: ", fault, "\n",
     "PC: 0x", hex(ipu.pc, 16L), "\n",
-    "shadow: ", hex(tag, 2L), " (", kind, ")\n",
+    "shadow: ", hex(poisonType, 2L), " (", kind, ")\n",
   });
 }
