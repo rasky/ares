@@ -2203,6 +2203,20 @@ auto CPU::Recompiler::emitSCC(u32 instruction, EmitPcMode pcMode) -> EmitExecute
     return EmitExecuteResult::Linear;
   }
 
+  //XTRACESTART
+  case 0x23: {
+    setupCallf();
+    callf(&CPU::XTRACESTART, imm(XCODE));
+    return EmitExecuteResult::Linear;
+  }
+
+  //XTRACESTOP
+  case 0x24: {
+    setupCallf();
+    callf(&CPU::XTRACESTOP);
+    return EmitExecuteResult::Linear;
+  }
+
   //XLOG
   case 0x25: {
     setupCallf();

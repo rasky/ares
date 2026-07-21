@@ -164,9 +164,9 @@ auto CPU::fetch(PhysAccess access) -> maybe<u32> {
 }
 
 template<u32 Size>
-auto CPU::read(PhysAccess access) -> maybe<u64> {
+auto CPU::read(PhysAccess access, u8 asanAccessType) -> maybe<u64> {
   if(!access) return nothing;
-  if(unlikely(xasan.active()) && !xasan.checkRead(*this, access, Size)) return nothing;
+  if(unlikely(xasan.active()) && !xasan.checkRead(*this, access, Size, asanAccessType)) return nothing;
   GDB::server.reportMemRead(access.vaddr, Size);
   u32 paddr = access.paddr;
   if(context.littleEndian()) paddr = reverseEndianPaddr<Size>(paddr);
@@ -185,9 +185,9 @@ auto CPU::readDebug(u64 vaddr) -> u64 {
 
 
 template<u32 Size>
-auto CPU::write(PhysAccess access, u64 data) -> bool {
+auto CPU::write(PhysAccess access, u64 data, u8 asanAccessType) -> bool {
   if(!access) return false;
-  if(unlikely(xasan.active()) && !xasan.checkWrite(*this, access, Size)) return false;
+  if(unlikely(xasan.active()) && !xasan.checkWrite(*this, access, Size, asanAccessType)) return false;
   GDB::server.reportMemWrite(access.vaddr, Size);
   u32 paddr = access.paddr;
   if(context.littleEndian()) paddr = reverseEndianPaddr<Size>(paddr);

@@ -225,6 +225,8 @@ auto CPU::decoderSCC(u32 instruction) -> void {
   op(0x08, TLBP);
   br(0x18, ERET);
   op(0x20, XDETECT, XRD, XCODE);
+  op(0x23, XTRACESTART, XCODE);
+  op(0x24, XTRACESTOP);
   op(0x25, XLOG, XRD, XRT, XCODE);
   op(0x27, XHEXDUMP, XRD, XRT);
   op(0x28, XPROF, XRD, XCODE);

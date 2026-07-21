@@ -1025,12 +1025,14 @@ auto CPU::FTRUNC_W_D(u8 fd, u8 fs) -> void {
 
 auto CPU::LDC1(u8 ft, cr64& rs, s16 imm) -> void {
   if(!scc.status.enable.coprocessor1) return exception.coprocessor1();
-  if(auto data = read<Dual>(rs.u64 + imm)) FT(u64) = *data;
+  u8 asanAccessType = &rs == &ipu.r[29] ? Xasan::AccessTypeStack : 0;
+  if(auto data = read<Dual>(rs.u64 + imm, asanAccessType)) FT(u64) = *data;
 }
 
 auto CPU::LWC1(u8 ft, cr64& rs, s16 imm) -> void {
   if(!scc.status.enable.coprocessor1) return exception.coprocessor1();
-  if(auto data = read<Word>(rs.u64 + imm)) FT(u32) = *data;
+  u8 asanAccessType = &rs == &ipu.r[29] ? Xasan::AccessTypeStack : 0;
+  if(auto data = read<Word>(rs.u64 + imm, asanAccessType)) FT(u32) = *data;
 }
 
 auto CPU::MFC1(r64& rt, u8 ft) -> void {
@@ -1045,12 +1047,14 @@ auto CPU::MTC1(cr64& rt, u8 ft) -> void {
 
 auto CPU::SDC1(u8 ft, cr64& rs, s16 imm) -> void {
   if(!scc.status.enable.coprocessor1) return exception.coprocessor1();
-  write<Dual>(rs.u64 + imm, FT(u64));
+  u8 asanAccessType = &rs == &ipu.r[29] ? Xasan::AccessTypeStack : 0;
+  write<Dual>(rs.u64 + imm, FT(u64), asanAccessType);
 }
 
 auto CPU::SWC1(u8 ft, cr64& rs, s16 imm) -> void {
   if(!scc.status.enable.coprocessor1) return exception.coprocessor1();
-  write<Word>(rs.u64 + imm, FT(u32));
+  u8 asanAccessType = &rs == &ipu.r[29] ? Xasan::AccessTypeStack : 0;
+  write<Word>(rs.u64 + imm, FT(u32), asanAccessType);
 }
 
 auto CPU::COP1UNIMPLEMENTED() -> void {

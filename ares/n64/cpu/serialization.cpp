@@ -134,6 +134,7 @@ auto CPU::serialize(serializer& s) -> void {
 
   s(emuxState.excMask);
   s(xasan.refcount);
+  s(xasan.checkMask);
   u32 xasanShadowSize = xasan.shadow.size();
   s(xasanShadowSize);
   if(s.reading()) xasan.shadow.resize(xasanShadowSize);

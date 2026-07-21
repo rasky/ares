@@ -432,25 +432,29 @@ auto CPU::JR(cr64& rs) -> void {
 }
 
 auto CPU::LB(r64& rt, cr64& rs, s16 imm) -> void {
-  if(auto data = read<Byte>(rs.u64 + imm)) rt.u64 = s8(*data);
+  u8 asanAccessType = &rs == &ipu.r[29] ? Xasan::AccessTypeStack : 0;
+  if(auto data = read<Byte>(rs.u64 + imm, asanAccessType)) rt.u64 = s8(*data);
 }
 
 auto CPU::LBU(r64& rt, cr64& rs, s16 imm) -> void {
-  if(auto data = read<Byte>(rs.u64 + imm)) rt.u64 = u8(*data);
+  u8 asanAccessType = &rs == &ipu.r[29] ? Xasan::AccessTypeStack : 0;
+  if(auto data = read<Byte>(rs.u64 + imm, asanAccessType)) rt.u64 = u8(*data);
 }
 
 auto CPU::LD(r64& rt, cr64& rs, s16 imm) -> void {
   if(!context.kernelMode() && context.bits == 32) return exception.reservedInstruction();
-  if(auto data = read<Dual>(rs.u64 + imm)) rt.u64 = *data;
+  u8 asanAccessType = &rs == &ipu.r[29] ? Xasan::AccessTypeStack : 0;
+  if(auto data = read<Dual>(rs.u64 + imm, asanAccessType)) rt.u64 = *data;
 }
 
 auto CPU::LDL(r64& rt, cr64& rs, s16 imm) -> void {
   if(!context.kernelMode() && context.bits == 32) return exception.reservedInstruction();
   u64 vaddr = rs.u64 + imm;
+  u8 asanAccessType = &rs == &ipu.r[29] ? Xasan::AccessTypeStack : 0;
   u64 data = rt.u64;
 
   if(context.littleEndian()) {
-    auto mem = read<Dual>(vaddr & ~7);
+    auto mem = read<Dual>(vaddr & ~7, asanAccessType);
     if(!mem) return;
     switch(vaddr & 7) {
     case 0: data = (data & 0x00ffffffffffffffull) | (*mem << 56); break;
@@ -465,7 +469,7 @@ auto CPU::LDL(r64& rt, cr64& rs, s16 imm) -> void {
   }
 
   if(context.bigEndian()) {
-    auto mem = read<Dual>(vaddr & ~7);
+    auto mem = read<Dual>(vaddr & ~7, asanAccessType);
     if(!mem) return;
     switch(vaddr & 7) {
     case 0: data = (data & 0x0000000000000000ull) | (*mem <<  0); break;
@@ -485,10 +489,11 @@ auto CPU::LDL(r64& rt, cr64& rs, s16 imm) -> void {
 auto CPU::LDR(r64& rt, cr64& rs, s16 imm) -> void {
   if(!context.kernelMode() && context.bits == 32) return exception.reservedInstruction();
   u64 vaddr = rs.u64 + imm;
+  u8 asanAccessType = &rs == &ipu.r[29] ? Xasan::AccessTypeStack : 0;
   u64 data = rt.u64;
 
   if(context.littleEndian()) {
-    auto mem = read<Dual>(vaddr & ~7);
+    auto mem = read<Dual>(vaddr & ~7, asanAccessType);
     if(!mem) return;
     switch(vaddr & 7) {
     case 0: data = (data & 0x0000000000000000ull) | (*mem >>  0); break;
@@ -503,7 +508,7 @@ auto CPU::LDR(r64& rt, cr64& rs, s16 imm) -> void {
   }
 
   if(context.bigEndian()) {
-    auto mem = read<Dual>(vaddr & ~7);
+    auto mem = read<Dual>(vaddr & ~7, asanAccessType);
     if(!mem) return;
     switch(vaddr & 7) {
     case 0: data = (data & 0xffffffffffffff00ull) | (*mem >> 56); break;
@@ -521,16 +526,19 @@ auto CPU::LDR(r64& rt, cr64& rs, s16 imm) -> void {
 }
 
 auto CPU::LH(r64& rt, cr64& rs, s16 imm) -> void {
-  if(auto data = read<Half>(rs.u64 + imm)) rt.u64 = s16(*data);
+  u8 asanAccessType = &rs == &ipu.r[29] ? Xasan::AccessTypeStack : 0;
+  if(auto data = read<Half>(rs.u64 + imm, asanAccessType)) rt.u64 = s16(*data);
 }
 
 auto CPU::LHU(r64& rt, cr64& rs, s16 imm) -> void {
-  if(auto data = read<Half>(rs.u64 + imm)) rt.u64 = u16(*data);
+  u8 asanAccessType = &rs == &ipu.r[29] ? Xasan::AccessTypeStack : 0;
+  if(auto data = read<Half>(rs.u64 + imm, asanAccessType)) rt.u64 = u16(*data);
 }
 
 auto CPU::LL(r64& rt, cr64& rs, s16 imm) -> void {
+  u8 asanAccessType = &rs == &ipu.r[29] ? Xasan::AccessTypeStack : 0;
   if(auto access = devirtualize<Read, Word>(rs.u64 + imm)) {
-    if (auto data = read<Word>(access.vaddr)) {
+    if (auto data = read<Word>(access.vaddr, asanAccessType)) {
       rt.u64 = s32(*data);
       scc.ll = access.paddr >> 4;
       scc.llbit = 1;
@@ -540,8 +548,9 @@ auto CPU::LL(r64& rt, cr64& rs, s16 imm) -> void {
 
 auto CPU::LLD(r64& rt, cr64& rs, s16 imm) -> void {
   if(!context.kernelMode() && context.bits == 32) return exception.reservedInstruction();
+  u8 asanAccessType = &rs == &ipu.r[29] ? Xasan::AccessTypeStack : 0;
   if(auto access = devirtualize<Read, Word>(rs.u64 + imm)) {
-    if (auto data = read<Dual>(access.vaddr)) {
+    if (auto data = read<Dual>(access.vaddr, asanAccessType)) {
       rt.u64 = *data;
       scc.ll = access.paddr >> 4;
       scc.llbit = 1;
@@ -554,13 +563,15 @@ auto CPU::LUI(r64& rt, u16 imm) -> void {
 }
 
 auto CPU::LW(r64& rt, cr64& rs, s16 imm) -> void {
-  if(auto data = read<Word>(rs.u64 + imm)) rt.u64 = s32(*data);
+  u8 asanAccessType = &rs == &ipu.r[29] ? Xasan::AccessTypeStack : 0;
+  if(auto data = read<Word>(rs.u64 + imm, asanAccessType)) rt.u64 = s32(*data);
 }
 
 auto CPU::LWL(r64& rt, cr64& rs, s16 imm) -> void {
   u64 vaddr = rs.u64 + imm;
+  u8 asanAccessType = &rs == &ipu.r[29] ? Xasan::AccessTypeStack : 0;
   u32 data = rt.u32;
-  auto mem = read<Word>(vaddr & ~3);
+  auto mem = read<Word>(vaddr & ~3, asanAccessType);
   if(!mem) return;
   u32 word = *mem;
 
@@ -587,9 +598,10 @@ auto CPU::LWL(r64& rt, cr64& rs, s16 imm) -> void {
 
 auto CPU::LWR(r64& rt, cr64& rs, s16 imm) -> void {
   u64 vaddr = rs.u64 + imm;
+  u8 asanAccessType = &rs == &ipu.r[29] ? Xasan::AccessTypeStack : 0;
   u64 upper = rt.u64 & 0xffffffff00000000ull;
   u32 data = rt.u32;
-  auto mem = read<Word>(vaddr & ~3);
+  auto mem = read<Word>(vaddr & ~3, asanAccessType);
   if(!mem) return;
   u32 word = *mem;
   bool signExtended;
@@ -617,7 +629,8 @@ auto CPU::LWR(r64& rt, cr64& rs, s16 imm) -> void {
 }
 
 auto CPU::LWU(r64& rt, cr64& rs, s16 imm) -> void {
-  if(auto data = read<Word>(rs.u64 + imm)) rt.u64 = u32(*data);
+  u8 asanAccessType = &rs == &ipu.r[29] ? Xasan::AccessTypeStack : 0;
+  if(auto data = read<Word>(rs.u64 + imm, asanAccessType)) rt.u64 = u32(*data);
 }
 
 auto CPU::MFHI(r64& rd) -> void {
@@ -665,13 +678,15 @@ auto CPU::ORI(r64& rt, cr64& rs, u16 imm) -> void {
 }
 
 auto CPU::SB(cr64& rt, cr64& rs, s16 imm) -> void {
-  write<Byte>(rs.u64 + imm, rt.u32);
+  u8 asanAccessType = &rs == &ipu.r[29] ? Xasan::AccessTypeStack : 0;
+  write<Byte>(rs.u64 + imm, rt.u32, asanAccessType);
 }
 
 auto CPU::SC(r64& rt, cr64& rs, s16 imm) -> void {
+  u8 asanAccessType = &rs == &ipu.r[29] ? Xasan::AccessTypeStack : 0;
   if(scc.llbit) {
     scc.llbit = 0;
-    rt.u64 = write<Word>(rs.u64 + imm, rt.u32);
+    rt.u64 = write<Word>(rs.u64 + imm, rt.u32, asanAccessType);
   } else {
     rt.u64 = 0;
   }
@@ -679,9 +694,10 @@ auto CPU::SC(r64& rt, cr64& rs, s16 imm) -> void {
 
 auto CPU::SCD(r64& rt, cr64& rs, s16 imm) -> void {
   if(!context.kernelMode() && context.bits == 32) return exception.reservedInstruction();
+  u8 asanAccessType = &rs == &ipu.r[29] ? Xasan::AccessTypeStack : 0;
   if(scc.llbit) {
     scc.llbit = 0;
-    rt.u64 = write<Dual>(rs.u64 + imm, rt.u64);
+    rt.u64 = write<Dual>(rs.u64 + imm, rt.u64, asanAccessType);
   } else {
     rt.u64 = 0;
   }
@@ -689,77 +705,79 @@ auto CPU::SCD(r64& rt, cr64& rs, s16 imm) -> void {
 
 auto CPU::SD(cr64& rt, cr64& rs, s16 imm) -> void {
   if(!context.kernelMode() && context.bits == 32) return exception.reservedInstruction();
-  write<Dual>(rs.u64 + imm, rt.u64);
+  u8 asanAccessType = &rs == &ipu.r[29] ? Xasan::AccessTypeStack : 0;
+  write<Dual>(rs.u64 + imm, rt.u64, asanAccessType);
 }
 
 auto CPU::SDL(cr64& rt, cr64& rs, s16 imm) -> void {
   if(!context.kernelMode() && context.bits == 32) return exception.reservedInstruction();
   u64 vaddr = rs.u64 + imm;
+  u8 asanAccessType = &rs == &ipu.r[29] ? Xasan::AccessTypeStack : 0;
   u64 data = rt.u64;
 
   if(context.littleEndian())
   switch(vaddr & 7) {
   case 0:
-    if(!write<Byte>(vaddr & ~7 | 0, data >> 56)) return;
+    if(!write<Byte>(vaddr & ~7 | 0, data >> 56, asanAccessType)) return;
     break;
   case 1:
-    if(!write<Half>(vaddr & ~7 | 0, data >> 48)) return;
+    if(!write<Half>(vaddr & ~7 | 0, data >> 48, asanAccessType)) return;
     break;
   case 2:
-    if(!write<Byte>(vaddr & ~7 | 2, data >> 56)) return;
-    if(!write<Half>(vaddr & ~7 | 0, data >> 40)) return;
+    if(!write<Byte>(vaddr & ~7 | 2, data >> 56, asanAccessType)) return;
+    if(!write<Half>(vaddr & ~7 | 0, data >> 40, asanAccessType)) return;
     break;
   case 3:
-    if(!write<Word>(vaddr & ~7 | 0, data >> 32)) return;
+    if(!write<Word>(vaddr & ~7 | 0, data >> 32, asanAccessType)) return;
     break;
   case 4:
-    if(!write<Byte>(vaddr & ~7 | 4, data >> 56)) return;
-    if(!write<Word>(vaddr & ~7 | 0, data >> 24)) return;
+    if(!write<Byte>(vaddr & ~7 | 4, data >> 56, asanAccessType)) return;
+    if(!write<Word>(vaddr & ~7 | 0, data >> 24, asanAccessType)) return;
     break;
   case 5:
-    if(!write<Half>(vaddr & ~7 | 4, data >> 48)) return;
-    if(!write<Word>(vaddr & ~7 | 0, data >> 16)) return;
+    if(!write<Half>(vaddr & ~7 | 4, data >> 48, asanAccessType)) return;
+    if(!write<Word>(vaddr & ~7 | 0, data >> 16, asanAccessType)) return;
     break;
   case 6:
-    if(!write<Byte>(vaddr & ~7 | 6, data >> 56)) return;
-    if(!write<Half>(vaddr & ~7 | 4, data >> 40)) return;
-    if(!write<Word>(vaddr & ~7 | 0, data >>  8)) return;
+    if(!write<Byte>(vaddr & ~7 | 6, data >> 56, asanAccessType)) return;
+    if(!write<Half>(vaddr & ~7 | 4, data >> 40, asanAccessType)) return;
+    if(!write<Word>(vaddr & ~7 | 0, data >>  8, asanAccessType)) return;
     break;
   case 7:
-    if(!write<Dual>(vaddr & ~7 | 0, data >>  0)) return;
+    if(!write<Dual>(vaddr & ~7 | 0, data >>  0, asanAccessType)) return;
     break;
   }
   
   if(context.bigEndian())
   switch(vaddr & 7) {
   case 0:
-    if(!write<Dual>(vaddr & ~7 | 0, data >>  0)) return;
+    if(!write<Dual>(vaddr & ~7 | 0, data >>  0, asanAccessType)) return;
     break;
   case 1:
-    if(!write<Byte>(vaddr & ~7 | 1, data >> 56)) return;
-    if(!write<Half>(vaddr & ~7 | 2, data >> 40)) return;
-    if(!write<Word>(vaddr & ~7 | 4, data >>  8)) return;
+    if(!write<Byte>(vaddr & ~7 | 1, data >> 56, asanAccessType)) return;
+    if(!write<Half>(vaddr & ~7 | 2, data >> 40, asanAccessType)) return;
+    if(!write<Word>(vaddr & ~7 | 4, data >>  8, asanAccessType)) return;
     break;
   case 2:
-    if(!write<Half>(vaddr & ~7 | 2, data >> 48)) return;
-    if(!write<Word>(vaddr & ~7 | 4, data >> 16)) return;
+    if(!write<Half>(vaddr & ~7 | 2, data >> 48, asanAccessType)) return;
+    if(!write<Word>(vaddr & ~7 | 4, data >> 16, asanAccessType)) return;
     break;
   case 3:
-    if(!write<Byte>(vaddr & ~7 | 3, data >> 56)) return;
-    if(!write<Word>(vaddr & ~7 | 4, data >> 24)) return;
+    if(!write<Byte>(vaddr & ~7 | 3, data >> 56, asanAccessType)) return;
+    if(!write<Word>(vaddr & ~7 | 4, data >> 24, asanAccessType)) return;
     break;
   case 4:
-    if(!write<Word>(vaddr & ~7 | 4, data >> 32)) return;
+    if(!write<Word>(vaddr & ~7 | 4, data >> 32, asanAccessType)) return;
     break;
   case 5:
-    if(!write<Byte>(vaddr & ~7 | 5, data >> 56)) return;
-    if(!write<Half>(vaddr & ~7 | 6, data >> 40)) return;
+    if(!write<Byte>(vaddr & ~7 | 5, data >> 56, asanAccessType)) return;
+    if(!write<Half>(vaddr & ~7 | 6, data >> 40, asanAccessType)) return;
     break;
   case 6:
-    if(!write<Half>(vaddr & ~7 | 6, data >> 48)) return;
+    if(!write<Half>(vaddr & ~7 | 6, data >> 48, asanAccessType)) return;
     break;
   case 7:
-    if(!write<Byte>(vaddr & ~7 | 7, data >> 56)) return;
+    if(!write<Byte>(vaddr & ~7 | 7, data >> 56, asanAccessType)) return;
     break;
   }
 }
@@ -767,77 +785,79 @@ auto CPU::SDL(cr64& rt, cr64& rs, s16 imm) -> void {
 auto CPU::SDR(cr64& rt, cr64& rs, s16 imm) -> void {
   if(!context.kernelMode() && context.bits == 32) return exception.reservedInstruction();
   u64 vaddr = rs.u64 + imm;
+  u8 asanAccessType = &rs == &ipu.r[29] ? Xasan::AccessTypeStack : 0;
   u64 data = rt.u64;
 
   if(context.littleEndian())
   switch(vaddr & 7) {
   case 0:
-    if(!write<Dual>(vaddr & ~7 | 0, data >>  0)) return;
+    if(!write<Dual>(vaddr & ~7 | 0, data >>  0, asanAccessType)) return;
     break;
   case 1:
-    if(!write<Word>(vaddr & ~7 | 4, data >> 24)) return;
-    if(!write<Half>(vaddr & ~7 | 2, data >>  8)) return;
-    if(!write<Byte>(vaddr & ~7 | 1, data >>  0)) return;
+    if(!write<Word>(vaddr & ~7 | 4, data >> 24, asanAccessType)) return;
+    if(!write<Half>(vaddr & ~7 | 2, data >>  8, asanAccessType)) return;
+    if(!write<Byte>(vaddr & ~7 | 1, data >>  0, asanAccessType)) return;
     break;
   case 2:
-    if(!write<Word>(vaddr & ~7 | 4, data >> 16)) return;
-    if(!write<Half>(vaddr & ~7 | 2, data >>  0)) return;
+    if(!write<Word>(vaddr & ~7 | 4, data >> 16, asanAccessType)) return;
+    if(!write<Half>(vaddr & ~7 | 2, data >>  0, asanAccessType)) return;
     break;
   case 3:
-    if(!write<Word>(vaddr & ~7 | 4, data >>  8)) return;
-    if(!write<Byte>(vaddr & ~7 | 3, data >>  0)) return;
+    if(!write<Word>(vaddr & ~7 | 4, data >>  8, asanAccessType)) return;
+    if(!write<Byte>(vaddr & ~7 | 3, data >>  0, asanAccessType)) return;
     break;
   case 4:
-    if(!write<Word>(vaddr & ~7 | 4, data >>  0)) return;
+    if(!write<Word>(vaddr & ~7 | 4, data >>  0, asanAccessType)) return;
     break;
   case 5:
-    if(!write<Half>(vaddr & ~7 | 6, data >>  8)) return;
-    if(!write<Byte>(vaddr & ~7 | 5, data >>  0)) return;
+    if(!write<Half>(vaddr & ~7 | 6, data >>  8, asanAccessType)) return;
+    if(!write<Byte>(vaddr & ~7 | 5, data >>  0, asanAccessType)) return;
     break;
   case 6:
-    if(!write<Half>(vaddr & ~7 | 6, data >>  0)) return;
+    if(!write<Half>(vaddr & ~7 | 6, data >>  0, asanAccessType)) return;
     break;
   case 7:
-    if(!write<Byte>(vaddr & ~7 | 7, data >>  0)) return;
+    if(!write<Byte>(vaddr & ~7 | 7, data >>  0, asanAccessType)) return;
     break;
   }
 
   if(context.bigEndian())
   switch(vaddr & 7) {
   case 0:
-    if(!write<Byte>(vaddr & ~7 | 0, data >>  0)) return;
+    if(!write<Byte>(vaddr & ~7 | 0, data >>  0, asanAccessType)) return;
     break;
   case 1:
-    if(!write<Half>(vaddr & ~7 | 0, data >>  0)) return;
+    if(!write<Half>(vaddr & ~7 | 0, data >>  0, asanAccessType)) return;
     break;
   case 2:
-    if(!write<Half>(vaddr & ~7 | 0, data >>  8)) return;
-    if(!write<Byte>(vaddr & ~7 | 2, data >>  0)) return;
+    if(!write<Half>(vaddr & ~7 | 0, data >>  8, asanAccessType)) return;
+    if(!write<Byte>(vaddr & ~7 | 2, data >>  0, asanAccessType)) return;
     break;
   case 3:
-    if(!write<Word>(vaddr & ~7 | 0, data >>  0)) return;
+    if(!write<Word>(vaddr & ~7 | 0, data >>  0, asanAccessType)) return;
     break;
   case 4:
-    if(!write<Word>(vaddr & ~7 | 0, data >>  8)) return;
-    if(!write<Byte>(vaddr & ~7 | 4, data >>  0)) return;
+    if(!write<Word>(vaddr & ~7 | 0, data >>  8, asanAccessType)) return;
+    if(!write<Byte>(vaddr & ~7 | 4, data >>  0, asanAccessType)) return;
     break;
   case 5:
-    if(!write<Word>(vaddr & ~7 | 0, data >> 16)) return;
-    if(!write<Half>(vaddr & ~7 | 4, data >>  0)) return;
+    if(!write<Word>(vaddr & ~7 | 0, data >> 16, asanAccessType)) return;
+    if(!write<Half>(vaddr & ~7 | 4, data >>  0, asanAccessType)) return;
     break;
   case 6:
-    if(!write<Word>(vaddr & ~7 | 0, data >> 24)) return;
-    if(!write<Half>(vaddr & ~7 | 4, data >>  8)) return;
-    if(!write<Byte>(vaddr & ~7 | 6, data >>  0)) return;
+    if(!write<Word>(vaddr & ~7 | 0, data >> 24, asanAccessType)) return;
+    if(!write<Half>(vaddr & ~7 | 4, data >>  8, asanAccessType)) return;
+    if(!write<Byte>(vaddr & ~7 | 6, data >>  0, asanAccessType)) return;
     break;
   case 7:
-    if(!write<Dual>(vaddr & ~7 | 0, data >>  0)) return;
+    if(!write<Dual>(vaddr & ~7 | 0, data >>  0, asanAccessType)) return;
     break;
   }
 }
 
 auto CPU::SH(cr64& rt, cr64& rs, s16 imm) -> void {
-  write<Half>(rs.u64 + imm, rt.u32);
+  u8 asanAccessType = &rs == &ipu.r[29] ? Xasan::AccessTypeStack : 0;
+  write<Half>(rs.u64 + imm, rt.u32, asanAccessType);
 }
 
 auto CPU::SLL(r64& rd, cr64& rt, u8 sa) -> void {
@@ -890,43 +910,45 @@ auto CPU::SUBU(r64& rd, cr64& rs, cr64& rt) -> void {
 }
 
 auto CPU::SW(cr64& rt, cr64& rs, s16 imm) -> void {
-  write<Word>(rs.u64 + imm, rt.u32);
+  u8 asanAccessType = &rs == &ipu.r[29] ? Xasan::AccessTypeStack : 0;
+  write<Word>(rs.u64 + imm, rt.u32, asanAccessType);
 }
 
 auto CPU::SWL(cr64& rt, cr64& rs, s16 imm) -> void {
   u64 vaddr = rs.u64 + imm;
+  u8 asanAccessType = &rs == &ipu.r[29] ? Xasan::AccessTypeStack : 0;
   u32 data = rt.u32;
 
   if(context.littleEndian()) {
     switch(vaddr & 3) {
     case 0:
-      if(!write<Byte>(vaddr & ~3 | 0, data >> 24)) return;
+      if(!write<Byte>(vaddr & ~3 | 0, data >> 24, asanAccessType)) return;
       break;
     case 1:
-      if(!write<Half>(vaddr & ~3 | 0, data >> 16)) return;
+      if(!write<Half>(vaddr & ~3 | 0, data >> 16, asanAccessType)) return;
       break;
     case 2:
-      if(!write<Byte>(vaddr & ~3 | 2, data >> 24)) return;
-      if(!write<Half>(vaddr & ~3 | 0, data >>  8)) return;
+      if(!write<Byte>(vaddr & ~3 | 2, data >> 24, asanAccessType)) return;
+      if(!write<Half>(vaddr & ~3 | 0, data >>  8, asanAccessType)) return;
       break;
     case 3:
-      if(!write<Word>(vaddr & ~3 | 0, data >>  0)) return;
+      if(!write<Word>(vaddr & ~3 | 0, data >>  0, asanAccessType)) return;
       break;
     }
   } else {
   switch(vaddr & 3) {
   case 0:
-    if(!write<Word>(vaddr + 0, data >>  0)) return;
+    if(!write<Word>(vaddr + 0, data >>  0, asanAccessType)) return;
     break;
   case 1:
-    if(!write<Byte>(vaddr + 0, data >> 24)) return;
-    if(!write<Half>(vaddr + 1, data >>  8)) return;
+    if(!write<Byte>(vaddr + 0, data >> 24, asanAccessType)) return;
+    if(!write<Half>(vaddr + 1, data >>  8, asanAccessType)) return;
     break;
   case 2:
-    if(!write<Half>(vaddr + 0, data >> 16)) return;
+    if(!write<Half>(vaddr + 0, data >> 16, asanAccessType)) return;
     break;
   case 3:
-    if(!write<Byte>(vaddr + 0, data >> 24)) return;
+    if(!write<Byte>(vaddr + 0, data >> 24, asanAccessType)) return;
     break;
   }
   }
@@ -934,38 +956,39 @@ auto CPU::SWL(cr64& rt, cr64& rs, s16 imm) -> void {
 
 auto CPU::SWR(cr64& rt, cr64& rs, s16 imm) -> void {
   u64 vaddr = rs.u64 + imm;
+  u8 asanAccessType = &rs == &ipu.r[29] ? Xasan::AccessTypeStack : 0;
   u32 data = rt.u32;
 
   if(context.littleEndian()) {
     switch(vaddr & 3) {
     case 0:
-      if(!write<Word>(vaddr & ~3 | 0, data >>  0)) return;
+      if(!write<Word>(vaddr & ~3 | 0, data >>  0, asanAccessType)) return;
       break;
     case 1:
-      if(!write<Half>(vaddr & ~3 | 2, data >>  8)) return;
-      if(!write<Byte>(vaddr & ~3 | 1, data >>  0)) return;
+      if(!write<Half>(vaddr & ~3 | 2, data >>  8, asanAccessType)) return;
+      if(!write<Byte>(vaddr & ~3 | 1, data >>  0, asanAccessType)) return;
       break;
     case 2:
-      if(!write<Half>(vaddr & ~3 | 2, data >>  0)) return;
+      if(!write<Half>(vaddr & ~3 | 2, data >>  0, asanAccessType)) return;
       break;
     case 3:
-      if(!write<Byte>(vaddr & ~3 | 3, data >>  0)) return;
+      if(!write<Byte>(vaddr & ~3 | 3, data >>  0, asanAccessType)) return;
       break;
     }
   } else {
   switch(vaddr & 3) {
   case 0:
-    if(!write<Byte>(vaddr + 0, data >>  0, false)) return;
+    if(!write<Byte>(vaddr + 0, data >>  0, asanAccessType, false)) return;
     break;
   case 1:
-    if(!write<Half>(vaddr + 0, data >>  0, false)) return;
+    if(!write<Half>(vaddr + 0, data >>  0, asanAccessType, false)) return;
     break;
   case 2:
-    if(!write<Byte>(vaddr + 0, data >>  0, false)) return;
-    if(!write<Half>(vaddr - 2, data >>  8, false)) return;
+    if(!write<Byte>(vaddr + 0, data >>  0, asanAccessType, false)) return;
+    if(!write<Half>(vaddr - 2, data >>  8, asanAccessType, false)) return;
     break;
   case 3:
-    if(!write<Word>(vaddr + 0, data >>  0, false)) return;
+    if(!write<Word>(vaddr + 0, data >>  0, asanAccessType, false)) return;
     break;
   }
   }

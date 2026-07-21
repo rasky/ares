@@ -225,6 +225,8 @@ auto CPU::decoderSCCInfo(u32 instruction) const -> OpInfo {
   op(0x08, TLBP);
   op(0x18, ERET, JitStateKeyMayChange);
   op(0x20, XDETECT);
+  op(0x23, XTRACESTART);
+  op(0x24, XTRACESTOP);
   op(0x25, XLOG);
   op(0x27, XHEXDUMP);
   op(0x28, XPROF);

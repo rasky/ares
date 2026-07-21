@@ -15,6 +15,8 @@ auto CPU::XDETECT(r64& rd, u64 code) -> void {
   n64 detect = 0;
   n64 ioctl = 0;
   detect.bit(0x20) = 1;  // XDETECT
+  detect.bit(0x23) = 1;  // XTRACESTART
+  detect.bit(0x24) = 1;  // XTRACESTOP
   detect.bit(0x25) = 1;  // XLOG
   detect.bit(0x27) = 1;  // XHEXDUMP
   detect.bit(0x28) = 1;  // XPROF
@@ -31,6 +33,32 @@ auto CPU::XDETECT(r64& rd, u64 code) -> void {
   case 0x02: rd.s64 = (s32)ioctl.bit(0x00, 0x1F); break;
   default:   rd.s64 = 0; break;
   }
+}
+
+auto CPU::XTRACESTART(u64 count) -> void {
+  if(!system.homebrewMode) return;
+  auto tracer = debugger.tracer.instruction;
+  if(!tracer) return;
+  if(!emuxState.traceActive) {
+    emuxState.traceTerminal = tracer->terminal();
+    emuxState.traceMask = tracer->mask();
+  }
+  emuxState.traceCount = count;
+  emuxState.traceActive = true;
+  tracer->setMask(false);
+  tracer->setTerminal(true);
+  pipeline.exception();
+}
+
+auto CPU::XTRACESTOP() -> void {
+  if(!system.homebrewMode) return;
+  if(!emuxState.traceActive) return;
+  if(auto tracer = debugger.tracer.instruction) {
+    tracer->setMask(emuxState.traceMask);
+    tracer->setTerminal(emuxState.traceTerminal);
+  }
+  emuxState.traceCount = 0;
+  emuxState.traceActive = false;
 }
 
 auto CPU::XLOG(cr64& rd, cr64& rt, u64 code) -> void {
@@ -215,7 +243,7 @@ auto CPU::XEXCEPTION(r64& rt) -> void {
   emuxState.excMask = rt.u64;
 }
 
-auto CPU::XASAN(cr64& rd, cr64& rt, u64 code) -> void {
+auto CPU::XASAN(r64& rd, cr64& rt, u64 code) -> void {
   if(!system.homebrewMode) return;
 
   switch(code & 0xf) {
@@ -238,6 +266,22 @@ auto CPU::XASAN(cr64& rd, cr64& rt, u64 code) -> void {
     if(xasan.shadow.empty()) xasan.shadow.resize(Xasan::RdramSize / Xasan::Granule, Xasan::defaultEntry());
     auto access = devirtualize<Read, Byte>(rd.u64, false, false);
     if(access && access.paddr < Xasan::RdramSize) xasan.unpoison(access.paddr, rt.u32);
+    break;
+  }
+  case 0x5:  //ENABLE_CHECK_MASK_BITS
+    rd.u64 = xasan.enableCheckBits(rt.u32);
+    break;
+  case 0x6:  //DISABLE_CHECK_MASK_BITS
+    rd.u64 = xasan.disableCheckBits(rt.u32);
+    break;
+  case 0x7: {  //ALLOW_STACK
+    auto access = devirtualize<Read, Byte>(rd.u64, false, false);
+    if(access && access.paddr < Xasan::RdramSize) xasan.setStackPermission(access.paddr, rt.u32, true);
+    break;
+  }
+  case 0x8: {  //DISALLOW_STACK
+    auto access = devirtualize<Read, Byte>(rd.u64, false, false);
+    if(access && access.paddr < Xasan::RdramSize) xasan.setStackPermission(access.paddr, rt.u32, false);
     break;
   }
   }

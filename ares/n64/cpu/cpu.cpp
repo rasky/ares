@@ -175,6 +175,9 @@ auto CPU::instruction() -> bool {
 
 auto CPU::instructionPrologue(u64 address, u32 instruction) -> void {
   debugger.instruction(address, instruction);
+  if(!emuxState.traceActive) return;
+  if(!emuxState.traceCount) return;
+  if(--emuxState.traceCount == 0) XTRACESTOP();
 }
 
 template<bool Recompiled>

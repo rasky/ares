@@ -351,13 +351,14 @@ struct CPU : Thread {
   template<u32 Size> auto busRead(u32 address) -> u64;
   template<u32 Size> auto busWriteBurst(u32 address, u32 *data) -> bool;
   template<u32 Size> auto busReadBurst(u32 address, u32 *data) -> bool;
-  template<u32 Size> auto read(PhysAccess access) -> maybe<u64>;
-  template<u32 Size> auto write(PhysAccess access, u64 data) -> bool;
-  template<u32 Size> auto read(u64 vaddr) -> maybe<u64> {
-    return read<Size>(devirtualize<Read, Size>(vaddr));
+  template<u32 Size> auto read(PhysAccess access, u8 asanAccessType = 0) -> maybe<u64>;
+  template<u32 Size> auto write(PhysAccess access, u64 data, u8 asanAccessType = 0) -> bool;
+  template<u32 Size> auto read(u64 vaddr, u8 asanAccessType = 0) -> maybe<u64> {
+    return read<Size>(devirtualize<Read, Size>(vaddr), asanAccessType);
   }
-  template<u32 Size> auto write(u64 vaddr, u64 data, bool alignedError = true) -> bool {
-    return write<Size>(devirtualize<Write, Size>(vaddr, alignedError), data);
+  template<u32 Size>
+  auto write(u64 vaddr, u64 data, u8 asanAccessType = 0, bool alignedError = true) -> bool {
+    return write<Size>(devirtualize<Write, Size>(vaddr, alignedError), data, asanAccessType);
   }
   template<u32 Size> auto vaddrAlignedError(u64 vaddr, bool write) -> bool;
   auto addressException(u64 vaddr) -> void;
@@ -1292,6 +1293,10 @@ struct CPU : Thread {
 
   struct EmuxState {
     n64 excMask;
+    u32 traceCount = 0;
+    bool traceActive = false;
+    bool traceTerminal = false;
+    bool traceMask = false;
   } emuxState;
 
   struct Xasan {
@@ -1355,34 +1360,41 @@ struct CPU : Thread {
     };
     static_assert(sizeof(ShadowEntry) == 2);
 
-    static constexpr u8 AllPermissions = (
+    static constexpr u8 DefaultPermissions = (
       PermissionCpuRead | PermissionCpuWrite | PermissionCpuExecute |
-      PermissionStack | PermissionRspDmaRead | PermissionRspDmaWrite
+      PermissionRspDmaRead | PermissionRspDmaWrite
     );
+    static constexpr u8 CheckMaskAll = 0x7e;
 
     static auto defaultEntry() -> ShadowEntry {
-      return ShadowEntry::create(n6(AllPermissions), PoisonAccessible, 0);
+      return ShadowEntry::create(n6(DefaultPermissions), PoisonAccessible, 0);
     }
 
     s32 refcount = 0;
     std::vector<ShadowEntry> shadow;
+    u8 checkMask = CheckMaskAll;
 
     auto active() const -> bool { return refcount > 0 && !shadow.empty(); }
     auto poison(u32 paddr, u32 size, u8 poisonType) -> void;
     auto unpoison(u32 paddr, u32 size) -> void;
+    auto setStackPermission(u32 paddr, u32 size, bool allowed) -> void;
+    auto enableCheckBits(u8 bits) -> u8;
+    auto disableCheckBits(u8 bits) -> u8;
     auto check(u32 paddr, u32 size, u8 permissionMask, u8 accessType) const -> Fault;
-    auto checkRead(CPU& self, const PhysAccess& access, u32 size) const -> bool;
-    auto checkWrite(CPU& self, const PhysAccess& access, u32 size) const -> bool;
+    auto checkRead(CPU& self, const PhysAccess& access, u32 size, u8 asanAccessType) -> bool;
+    auto checkWrite(CPU& self, const PhysAccess& access, u32 size, u8 asanAccessType) -> bool;
   } xasan;
 
   auto XDETECT(r64& rd, u64 code) -> void;
+  auto XTRACESTART(u64 count) -> void;
+  auto XTRACESTOP() -> void;
   auto XLOG(cr64& rd, cr64& rt, u64 code) -> void;
   auto XHEXDUMP(cr64& rd, cr64& rt) -> void;
   auto XPROF(cr64& rd, u64 code) -> void;
   auto XPROFREAD(cr64& rd, r64& rt) -> void;
   auto XEXCEPTION(r64& rt) -> void;
   auto XIOCTL(u64 code) -> void;
-  auto XASAN(cr64& rd, cr64& rt, u64 code) -> void;
+  auto XASAN(r64& rd, cr64& rt, u64 code) -> void;
   auto xasanReport(bool write, u64 vaddr, u32 size, u8 poisonType, u8 accessType, u8 faultClass)
     -> void;
 };
